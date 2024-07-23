@@ -1,6 +1,13 @@
 import * as admin from "firebase-admin";
 
-import { createLobby, joinLobby, exitLobby, startGameFromLobby } from "./lobby";
+import {
+  createLobby,
+  joinLobby,
+  exitLobby,
+  startGameFromLobby,
+  kickFromLobby,
+  lobbyPlayerReady,
+} from "./lobby";
 import { playerAction, nextTurn } from "./game";
 import { onCreateNewRound } from "./round";
 
@@ -11,6 +18,8 @@ export {
   createLobby,
   joinLobby,
   exitLobby,
+  kickFromLobby,
+  lobbyPlayerReady,
   startGameFromLobby,
   playerAction,
   nextTurn,

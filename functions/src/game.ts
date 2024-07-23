@@ -1,28 +1,43 @@
 import * as functions from "firebase-functions";
 import { db } from ".";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
-import { Player } from "./player";
-import { shuffleTiles, Tile, tiles } from "../tiles";
-import { Round } from "./round";
+import {
+  getContinuePlayers,
+  getExitingPlayersWithDistributedReward,
+  getExitPlayers,
+  getIdlePlayers,
+  Player,
+} from "./player";
+import { shuffleTiles, tiles } from "../tiles";
+import { createNewRound, endRound, Round } from "./round";
 
-const GAME_MAX_ROUNDS = 2;
+export const GAME_MAX_ROUNDS = 2;
+const TURN_WAIT_TIME = 30 * 1000; // 30 seconds
 
 export type Game = {
   id: string;
   lobbyId: string;
   round: number;
   players: Player[];
+  currentRoundId: string;
+  gameOver?: boolean;
 };
 
-// Advances game to next turn via player request
-
-// TODO: Check if all players are ready for next turn
-// OR waiting grace period has ended
-
-// - Check continue/exit players
-// - If no continuers, end round
-// - If continuers, divide reward and deal next tile
+//#region nextTurn
+/*
+  # ┌────────────────────────────────────────────────────────────────────────────┐
+  # │ Advances game to next turn via player request  
+  # | 
+  # │> Check if all players have chosen an action                                                     
+  # │> Takes TURN_WAIT_TIME into account and nudges idle players
+  # |> When turn timer is over, idle players will be forced to exit the round
+  # │> Get continuers and exiters
+  # │> If no continuers, end round                                                                            
+  # │> If continuers, divide reward evenly between exiters, rounding down
+  # │> Deal next tile, update round state                                                       
+  # └────────────────────────────────────────────────────────────────────────────┘
+  */
 export const nextTurn = functions.https.onRequest(async (req, res) => {
   const { roundId, user } = req.body;
 
@@ -31,26 +46,71 @@ export const nextTurn = functions.https.onRequest(async (req, res) => {
     return;
   }
 
+  const data = {
+    roundId,
+    userId: user,
+  };
+
   const roundRef = db.collection("round").doc(roundId);
   const round = (await roundRef.get()).data() as Round;
 
   if (!round) {
-    res.status(404).send("Round not found");
+    res
+      .status(404)
+      .send({ data: { ...data, message: "Round not found", error: true } });
     return;
   }
 
-  if (!round.players.find((player) => player.id === user)) {
+  if (!round.players.find((playerId) => playerId === user)) {
     res
       .status(403)
-      .send(`Player ${user} not found in round, tried to nextTurn`);
+      .send({ data: { ...data, message: "Player not in round", error: true } });
     return;
   }
 
-  const continuingPlayers = getPlayersWhoContinue(round);
-  const exitingPlayers = getExitingPlayers(round);
+  /*
+  # ┌────────────────────────────────────────────────────────────────────────────┐
+  # │ Check turn timer and idle players                                                     
+  # └────────────────────────────────────────────────────────────────────────────┘
+  */
+  const gracePeriodIsOver =
+    Date.now() - round.turnTimestamp.toMillis() > TURN_WAIT_TIME;
+  const idlePlayers = getIdlePlayers(round);
 
-  // END ROUND
-  // No players want to continue
+  console.log(
+    "DEBUG: Turn wait time remaining",
+    (TURN_WAIT_TIME - (Date.now() - round.turnTimestamp.toMillis())) / 1000
+  );
+
+  /*
+  # ┌────────────────────────────────────────────────────────────────────────────┐
+  # │ Some players have not taken an action and there's grace period left
+  # | > Add idle players to nudge list for a reminder to take an action                                                     
+  # └────────────────────────────────────────────────────────────────────────────┘
+  */
+  if (idlePlayers.length > 0 && !gracePeriodIsOver) {
+    await roundRef.update({
+      nudge: idlePlayers,
+    });
+
+    res
+      .status(200)
+      .send({ data: { ...data, message: "Nudging idle players" } });
+
+    return;
+  }
+
+  const continuingPlayers = getContinuePlayers(round);
+  const exitingPlayers = getExitPlayers(round);
+
+  /*
+  # ┌────────────────────────────────────────────────────────────────────────────┐
+  # │ No players want to continue                                                       
+  # │ > End the round
+  # │ > If last round, end the game
+  # │ > If more rounds, create new round                                                                            
+  # └────────────────────────────────────────────────────────────────────────────┘
+  */
   if (continuingPlayers.length === 0) {
     await endRound({
       roundRef,
@@ -61,140 +121,105 @@ export const nextTurn = functions.https.onRequest(async (req, res) => {
       exitingPlayers,
     });
 
-    res.status(200).send("endRound successful");
+    const gameRef = db.collection("game").doc(round.gameId);
+    // If this is last round, end game
+    if (round.counter >= GAME_MAX_ROUNDS) {
+      console.log("GAME OVER, all rounds have been played");
+
+      await gameRef.update({
+        gameOver: true,
+      });
+
+      res.status(200).send({ data: { ...data, message: "Game ended" } });
+      return;
+    }
+
+    const game = (await gameRef.get()).data() as Game;
+
+    // More rounds to play, create new round
+    const newRoundId = await createNewRound({ round, lobbyId: game.lobbyId });
+
+    // Update lobby with new round id
+    const lobbyRef = db.collection("lobby").doc(game.lobbyId);
+    lobbyRef.update({
+      currentRoundId: newRoundId,
+    });
+
+    // Update game with new round id and increment round counter
+    gameRef.update({
+      currentRoundId: newRoundId,
+      round: FieldValue.increment(1),
+    });
+
+    res
+      .status(200)
+      .send({ data: { ...data, roundId: newRoundId, message: "Round ended" } });
     return;
   }
 
-  // CONTINUE
-  // - Deal next tile
-  // - Update round with new board and players
+  /*
+  # ┌────────────────────────────────────────────────────────────────────────────┐
+  # │ Some players want to continue                                                       
+  # │> Deal next tile                                                            
+  # │> Update round with new board and players
+  # └────────────────────────────────────────────────────────────────────────────┘
+  */
   const board = round?.board || [];
-
   const remainingTiles = tiles.filter((tile) => !board.includes(tile));
   const nextTile = shuffleTiles(remainingTiles)[0];
 
-  // Players exited this round
-  // - Update campPlayers with players who claimed reward this round
-  // - Reset rewardStack
-  if (exitingPlayers.length > 0) {
-    const exitingPlayersWithReward = getExitingPlayersWithDistributedReward({
-      rewardStack: round.rewardStack,
-      exitingPlayers,
-    });
+  const playersExitedThisRound = exitingPlayers.length > 0;
+  switch (playersExitedThisRound) {
+    // Players exited this round
+    // > Update campPlayers with players who claimed reward this round
+    // > Reset rewardStack
+    case true: {
+      const exitingPlayersWithReward = getExitingPlayersWithDistributedReward({
+        rewardStack: round.rewardStack,
+        exitingPlayers,
+      });
 
-    await roundRef.update({
-      board: FieldValue.arrayUnion(nextTile),
-      rewardStack: [],
-      players: continuingPlayers,
-      campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
-      continuePlayers: [],
-    });
+      await roundRef.update({
+        board: FieldValue.arrayUnion(nextTile),
+        rewardStack: [nextTile],
+        players: continuingPlayers,
+        continuePlayers: [],
+        exitPlayers: [],
+        campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
+        nudge: [],
+        turnTimestamp: Timestamp.now(),
+      });
 
-    return;
+      res.status(200).send({ data });
+      return;
+    }
+
+    // No players exited this round
+    // > Skip updating campPlayers
+    // > Dont reset rewardStack
+    case false: {
+      await roundRef.update({
+        board: FieldValue.arrayUnion(nextTile),
+        rewardStack: FieldValue.arrayUnion(nextTile),
+        players: continuingPlayers,
+        continuePlayers: [],
+        exitPlayers: [],
+        nudge: [],
+        turnTimestamp: Timestamp.now(),
+      });
+
+      res.status(200).send({ data });
+      return;
+    }
+    default: {
+      res.status(400).send({ data: { ...data, message: "Invalid state" } });
+      return;
+    }
   }
-
-  // No players exited this round
-  // - Skip updating campPlayers
-  // - Dont reset rewardStack
-  await roundRef.update({
-    board: FieldValue.arrayUnion(nextTile),
-    rewardStack: FieldValue.arrayUnion(nextTile),
-    players: continuingPlayers,
-    continuePlayers: [],
-  });
-
-  res.status(200).send("nextTurn successful");
 });
 
-// Player can continue playing if:
-// - Player id found in continuePlayers array
-// - Have not already exited (is not found in campPlayers array)
-const getPlayersWhoContinue = (round: Round) => {
-  return round?.players
-    .filter((player: Player) =>
-      round.continuePlayers.find((p) => p === player.id)
-    )
-    .filter(
-      (player: Player) => !round.campPlayers.find((p) => p.id === player.id)
-    );
-};
-
-// Player will exit if:
-// - Player id not found in continuePlayers array
-const getExitingPlayers = (round: Round) => {
-  return round?.players.filter(
-    (player: Player) => !round?.continuePlayers.includes(player.id)
-  );
-};
-
-// Divides reward evenly between exiting players
-// Returns player array with score
-type GetExitingPlayersWithDistributedRewardType = {
-  rewardStack: Tile[];
-  exitingPlayers: Player[];
-};
-const getExitingPlayersWithDistributedReward = ({
-  rewardStack,
-  exitingPlayers,
-}: GetExitingPlayersWithDistributedRewardType) => {
-  const thisTurnValue = rewardStack
-    .map((tile: Tile) => tile.value)
-    .reduce((a: number, b: number) => a + b, 0);
-
-  const scorePerPlayer = Math.floor(thisTurnValue / exitingPlayers.length);
-  return exitingPlayers.map((player: Player) => ({
-    ...player,
-    score: scorePerPlayer,
-    roundTotalValue: thisTurnValue,
-  }));
-};
-
-// Ends a single round
-// Updates round with current player status and score
-// Updates game score according to round results
-// If this is last round, calls function to end the game
-type EndRoundProps = {
-  roundRef: FirebaseFirestore.DocumentReference;
-  round: Round;
-  gameId: string;
-  roundCounter: number;
-  continuingPlayers: Player[];
-  exitingPlayers: Player[];
-};
-const endRound = async ({
-  roundRef,
-  round,
-  gameId,
-  continuingPlayers,
-  exitingPlayers,
-}: EndRoundProps) => {
-  const exitingPlayersWithReward = getExitingPlayersWithDistributedReward({
-    rewardStack: round.rewardStack,
-    exitingPlayers,
-  });
-
-  console.log("End round. Updating round result..");
-  await roundRef.update({
-    players: continuingPlayers,
-    campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
-  });
-
-  console.log("... updating game score");
-  await handleUpdateGameScore({
-    roundId: roundRef.id,
-    gameId: gameId,
-  });
-
-  // If this is last round, end game
-  if (round.counter >= GAME_MAX_ROUNDS) {
-    console.log("GAME OVER, all rounds have been played");
-    return;
-  }
-};
-
 // - Update player score
-// - Increments game round
-const handleUpdateGameScore = async ({
+export const handleUpdateGameScore = async ({
   roundId,
   gameId,
 }: {
@@ -222,23 +247,8 @@ const handleUpdateGameScore = async ({
   });
 };
 
-/*
-console.log("Creating new round..");
-const newRoundRef = db.collection("round").doc();
-await newRoundRef.create({
-  gameId: roundStateData?.gameId,
-  roundStateId: roundStateRef.id,
-  board: [],
-  players: createPlayers(roundStateData?.players),
-  continuePlayers: [],
-  campPlayers: [],
-  counter: round.counter + 1,
-});
-console.log("New round created:", newRoundRef.id);
-*/
-
-// Modifies round continuePlayers array
-// Based on player action: "continue" or "exit"
+//#region playerAction
+// Player chooses action in round: "continue" or "exit"
 export const playerAction = functions.https.onRequest(async (req, res) => {
   const { roundId, user } = req.body;
   const { action } = req.query;
@@ -252,11 +262,13 @@ export const playerAction = functions.https.onRequest(async (req, res) => {
   const round = (await roundRef.get()).data() as Round;
 
   if (!round) {
+    console.error("Player action: round not found");
     res.status(404).send("Round not found");
     return;
   }
 
-  if (!round.players.find((player) => player.id === user)) {
+  if (!round.players.find((playerId) => playerId === user)) {
+    console.error("Player action: user not in round");
     res
       .status(403)
       .send(`Player ${user} not found in round, tried to continue`);
@@ -267,66 +279,24 @@ export const playerAction = functions.https.onRequest(async (req, res) => {
     case "continue":
       await roundRef.update({
         continuePlayers: FieldValue.arrayUnion(user),
+        exitPlayers: FieldValue.arrayRemove(user),
+        nudge: FieldValue.arrayRemove(user),
       });
 
-      res.status(200).send("roundActionContinue successful");
+      res.status(200).send({ data: { roundId, userId: user } });
       break;
     case "exit":
       await roundRef.update({
         continuePlayers: FieldValue.arrayRemove(user),
+        exitPlayers: FieldValue.arrayUnion(user),
+        nudge: FieldValue.arrayRemove(user),
       });
 
-      res.status(200).send("roundActionExit successful");
+      res.status(200).send({ data: { roundId, userId: user } });
       break;
     default:
+      console.error("Player action: invalid action");
       res.status(400).send("Invalid action");
       return;
   }
 });
-
-/* DEPRECATED
-export const roundActionContinue = functions.https.onRequest(
-  async (req, res) => {
-    const { roundId, user } = req.body;
-
-    if (!roundId || !user) {
-      res
-        .status(400)
-        .send("Missing parameters when trying to roundActionContinue");
-      return;
-    }
-
-    const roundRef = db.collection("round").doc(roundId);
-    const round = (await roundRef.get()).data() as Round;
-
-    if (!round) {
-      res.status(404).send("Round not found");
-      return;
-    }
-
-    if (!round.players.find((player) => player.id === user)) {
-      res
-        .status(403)
-        .send(`Player ${user} not found in round, tried to continue`);
-      return;
-    }
-  }
-);
-
-export const roundActionExit = functions.https.onRequest(async (req, res) => {
-  const { roundId, user } = req.body;
-
-  if (!roundId || !user) {
-    res.status(400).send("Missing parameters when trying to roundActionExit");
-    return;
-  }
-
-  const roundRef = db.collection("round").doc(roundId);
-
-  await roundRef.update({
-    continuePlayers: FieldValue.arrayRemove(user),
-  });
-
-  res.status(200).send("roundActionExit successul");
-});
-*/

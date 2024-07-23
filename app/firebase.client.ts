@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, inMemoryPersistence, setPersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   // @ts-expect-error unable to type this
@@ -20,5 +20,11 @@ const auth = getAuth(app);
 setPersistence(auth, inMemoryPersistence);
 
 const db = getFirestore(app);
+
+// Connect to Firestore emulator if running locally
+// @ts-expect-error unable to type this
+if (window.ENV.USE_EMULATOR) {
+  connectFirestoreEmulator(db, "localhost", 8080);
+}
 
 export { auth, db };

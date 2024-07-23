@@ -1,71 +1,28 @@
 import * as logger from "firebase-functions/logger";
-import {
-  onDocumentCreated,
-  onDocumentUpdated,
-} from "firebase-functions/v2/firestore";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { shuffleTiles, Tile, tiles } from "../tiles";
-import { FieldValue } from "firebase-admin/firestore";
+import { getExitingPlayersWithDistributedReward, Player } from "./player";
+import { handleUpdateGameScore } from "./game";
 import { db } from ".";
-import { createPlayers, Player } from "./player";
-import { Game } from "./game";
-
-const GAME_MAX_ROUNDS = 2;
-const TURN_WAIT_TIME = 10 * 1000;
-const SAFETY_ROUND_MAX_COUNTER = 20;
 
 export type Round = {
   id: string;
   gameId: string;
-  roundStateId: string;
   board: Tile[]; // Contains all dealt tiles. For display purposes.
   rewardStack: Tile[]; // Contains tiles that have not been claimed yet. Resets when dividing rewards.
-  players: Player[];
-  continuePlayers: string[];
-  campPlayers: Player[];
-  counter: number;
-};
-
-export type RoundState = {
-  id: string;
-  roundId: string;
-  gameId: string;
-  counter: number;
   players: string[];
-};
-
-// - Update player score
-// - Increments game round
-const handleUpdateGameScore = async ({
-  roundId,
-  gameId,
-}: {
-  roundId: string;
-  gameId: string;
-}) => {
-  const gameRef = db.collection("game").doc(gameId);
-  const game = (await gameRef.get()).data() as Game;
-  const roundRef = db.collection("round").doc(roundId);
-  const round = (await roundRef.get()).data() as Round;
-
-  const currentScore = game?.players || [];
-  const newScore = round.campPlayers.map((player: Player) => {
-    const existingPlayer = currentScore.find((p) => p.id === player.id);
-    const score = existingPlayer?.score || 0;
-
-    return {
-      id: player.id,
-      score: score + player.score,
-    };
-  });
-
-  await gameRef.update({
-    players: newScore,
-  });
+  continuePlayers: string[]; // Players who have chosen to continue this round
+  exitPlayers: string[]; // Players who have chosen to exit this round
+  campPlayers: Player[]; // Players who have exited this round
+  nudge: string[]; // List of idle players who should be nudged
+  counter: number;
+  turnTimestamp: Timestamp; // Timestamp of the last turn, used for forcing turns if there's idle players
 };
 
 // Triggers when new round is created
-// Deals first tile and ensures roundState is updated
+// > Deals first tile
 // This will ensure that the game logic is started
 export const onCreateNewRound = onDocumentCreated(
   "round/{roundId}",
@@ -78,7 +35,6 @@ export const onCreateNewRound = onDocumentCreated(
       return;
     }
 
-    //const roundStateRef = db.collection("roundState").doc(round.roundStateId);
     const board = round?.board || [];
 
     const remainingTiles = tiles.filter((tile) => !board.includes(tile.id));
@@ -88,176 +44,95 @@ export const onCreateNewRound = onDocumentCreated(
       board: FieldValue.arrayUnion(nextTile),
       rewardStack: FieldValue.arrayUnion(nextTile),
     });
-
-    /*
-    await roundStateRef.update({
-      counter: FieldValue.increment(1),
-    });
-    */
   }
 );
 
-// DEPRECATED
-// Handles automatic advancing of Round in turns
-/// Todo: replace with logic based on player interaction instead of automatic advancing
-/// Todo: handle trap logic
-export const onNewTurn = onDocumentUpdated(
-  "roundState/{roundStateId}",
-  async (event) => {
-    const roundStateData = event.data?.after.data();
-    const previousRoundStateData = event.data?.before.data();
-    const roundStateRef = event.data?.after.ref;
+//#region endRound
+// Ends a single round
+// Updates round with current player status and score
+// Updates game score according to round results
+// If this is last round, calls function to end the game
+type EndRoundProps = {
+  roundRef: FirebaseFirestore.DocumentReference;
+  round: Round;
+  gameId: string;
+  roundCounter: number;
+  continuingPlayers: string[];
+  exitingPlayers: string[];
+};
 
-    if (!roundStateRef) {
-      logger.warn(
-        "Error in trigger: onDocumentUpdated (roundState) - missing eventRef"
-      );
-      return;
-    }
+export const endRound = async ({
+  roundRef,
+  round,
+  gameId,
+  continuingPlayers,
+  exitingPlayers,
+}: EndRoundProps) => {
+  const exitingPlayersWithReward = getExitingPlayersWithDistributedReward({
+    rewardStack: round.rewardStack,
+    exitingPlayers,
+  });
 
-    if (
-      roundStateData?.counter === previousRoundStateData?.counter ||
-      roundStateData?.counter >= SAFETY_ROUND_MAX_COUNTER
-    ) {
-      console.log("Data counter:", roundStateData?.counter);
-      return null;
-    }
+  console.log("End round. Updating round result..");
+  await roundRef.update({
+    players: continuingPlayers,
+    campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
+    rewardStack: [],
+    nudge: [],
+  });
 
-    const roundRef = db.collection("round").doc(roundStateData?.roundId);
+  console.log("... updating game score");
+  await handleUpdateGameScore({
+    roundId: roundRef.id,
+    gameId: gameId,
+  });
+};
 
-    // Handle logic for advancing into next turn
-    // - Check if players continue or exit
-    // - Divide current accumulated reward between exiting players
-    // - If no players continue, end round
-    const nextTurnCallback = async () => {
-      const round = (await roundRef.get()).data() as Round;
-      const players = round?.players || [];
+type CreateNewRoundProps = {
+  round: Round;
+  lobbyId: string;
+};
 
-      if (!players || players.length === 0) {
-        logger.warn(
-          "Should not happen, but no players playng and round is still going!"
-        );
-        return;
-      }
+export const createNewRound = async ({
+  round,
+  lobbyId,
+}: CreateNewRoundProps) => {
+  const newRoundRef = db.collection("round").doc();
 
-      // Player can continue playing if:
-      // - Player id found in continuePlayers array
-      // - Have not already exited (is not found in campPlayers array)
-      const playersWhoContinue = round?.players
-        .filter((player: Player) =>
-          round.continuePlayers.find((p) => p === player.id)
-        )
-        .filter(
-          (player: Player) => !round.campPlayers.find((p) => p.id === player.id)
-        );
+  const props = createRoundProps({
+    gameId: round.gameId,
+    lobbyId,
+    playersFromLobby: round.players,
+    counter: round.counter + 1,
+  });
 
-      const playersWhoExit = round?.players.filter(
-        (player: Player) => !round?.continuePlayers.includes(player.id)
-      );
+  await newRoundRef.create(props);
 
-      // Handle exiting players
-      // - Divide reward to exiting players
-      const thisTurnValue = round?.rewardStack
-        .map((tile: Tile) => tile.value)
-        .reduce((a: number, b: number) => a + b, 0);
-      const reward = Math.floor(thisTurnValue / playersWhoExit.length);
-      const campPlayers = playersWhoExit.map(
-        (player: Player) =>
-          ({
-            ...player,
-            score: reward,
-            roundTotalValue: thisTurnValue,
-            exitRound: roundStateData?.counter,
-          }) || []
-      );
+  return newRoundRef.id;
+};
 
-      // End round if no players continue
-      // - Update game score
-      // - Increment game round
-      // - Create new round
-      // - Update roundState with new roundId and set counter to 0
-      if (!playersWhoContinue || playersWhoContinue.length === 0) {
-        console.log("Ending round, no more players to continue");
+type RoundProps = {
+  gameId: string;
+  lobbyId: string;
+  playersFromLobby: string[];
+  counter: number;
+};
 
-        await roundRef.update({
-          players: playersWhoContinue,
-          campPlayers: FieldValue.arrayUnion(...campPlayers),
-        });
-
-        handleUpdateGameScore({
-          roundId: roundRef.id,
-          gameId: roundStateData?.gameId,
-        });
-
-        // If this is last round, end game
-        console.log("Round counter:", round?.counter);
-        if (round?.counter >= GAME_MAX_ROUNDS) {
-          console.log(`DEBUG: round ${roundStateData?.counter}, at game over`);
-          console.log("GAME OVER, all rounds have been played");
-          return;
-        }
-
-        console.log("Creating new round..");
-        const newRoundRef = db.collection("round").doc();
-        await newRoundRef.create({
-          gameId: roundStateData?.gameId,
-          roundStateId: roundStateRef.id,
-          board: [],
-          players: createPlayers(roundStateData?.players),
-          continuePlayers: [],
-          campPlayers: [],
-          counter: round.counter + 1,
-        });
-        console.log("New round created:", newRoundRef.id);
-
-        await roundStateRef?.update({
-          counter: 0,
-          roundId: newRoundRef.id,
-        });
-
-        return;
-      }
-
-      // Continue game between continuing players
-      // Deal next tile card
-      const board = round?.board || [];
-
-      const remainingTiles = tiles.filter((tile) => !board.includes(tile));
-      const nextTile = shuffleTiles(remainingTiles)[0];
-
-      console.log(`DEBUG: round ${roundStateData?.counter} continuing..`);
-      // Continue to next round
-      roundStateRef?.update({
-        counter: FieldValue.increment(1),
-      });
-
-      const playersExitedThisRound = campPlayers.length > 0;
-      if (playersExitedThisRound) {
-        await roundRef.update({
-          board: FieldValue.arrayUnion(nextTile),
-          rewardStack: [],
-          players: playersWhoContinue,
-          campPlayers: FieldValue.arrayUnion(...campPlayers),
-          continuePlayers: [],
-        });
-        return;
-      }
-
-      // No players exited this round
-      // - Skip updating campPlayers
-      // - Dont reset rewardStack
-      await roundRef.update({
-        board: FieldValue.arrayUnion(nextTile),
-        rewardStack: FieldValue.arrayUnion(nextTile),
-        players: playersWhoContinue,
-        continuePlayers: [],
-      });
-    };
-
-    setTimeout(async () => {
-      nextTurnCallback();
-    }, TURN_WAIT_TIME);
-
-    return null;
-  }
-);
+export const createRoundProps = ({
+  lobbyId,
+  gameId,
+  playersFromLobby,
+  counter,
+}: RoundProps) => ({
+  lobbyId,
+  gameId,
+  board: [],
+  players: playersFromLobby,
+  continuePlayers: [],
+  exitPlayers: [],
+  campPlayers: [],
+  rewardStack: [],
+  nudge: [],
+  counter,
+  turnTimestamp: Timestamp.now(),
+});

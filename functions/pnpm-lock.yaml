@@ -17,6 +17,9 @@ importers:
       firebase-functions:
         specifier: ^5.0.0
         version: 5.0.1(firebase-admin@12.2.0)
+      pokemon:
+        specifier: ^3.2.0
+        version: 3.2.0
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -2107,6 +2110,10 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
+  pokemon@3.2.0:
+    resolution: {integrity: sha512-i31cLXuAEVKeIo5Sg5pESFfW4ccgdMxeU7edAB2hkVTZly5L2LRE3QrbhaTehBR1cppfT5G/512lZTUc0A/khQ==}
+    engines: {node: '>=18'}
+
   possible-typed-array-names@1.0.0:
     resolution: {integrity: sha512-d7Uw+eZoloe0EHDIYoe+bQ5WXnGMOpmiZFTuMWCwpjzzkL2nTjcKiAk4hh8TjnGye2TwWOk3UXucZ+3rbmBa8Q==}
     engines: {node: '>= 0.4'}
@@ -2497,6 +2504,14 @@ packages:
 
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+
+  unique-random-array@2.0.0:
+    resolution: {integrity: sha512-xR87O95fZ7hljw84J8r1YDXrvffPLWN513BNOP4Bv0KcgG5dyEUrHwsvP7mVAOKg4Y80uqRbpUk0GKr8il70qg==}
+    engines: {node: '>=8'}
+
+  unique-random@2.1.0:
+    resolution: {integrity: sha512-iQ1ZgWac3b8YxGThecQFRQiqgk6xFERRwHZIWeVVsqlbmgCRl0PY13R4mUkodNgctmg5b5odG1nyW/IbOxQTqg==}
+    engines: {node: '>=6'}
 
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
@@ -5312,6 +5327,10 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
+  pokemon@3.2.0:
+    dependencies:
+      unique-random-array: 2.0.0
+
   possible-typed-array-names@1.0.0: {}
 
   prelude-ls@1.2.1: {}
@@ -5748,6 +5767,12 @@ snapshots:
       which-boxed-primitive: 1.0.2
 
   undici-types@5.26.5: {}
+
+  unique-random-array@2.0.0:
+    dependencies:
+      unique-random: 2.1.0
+
+  unique-random@2.1.0: {}
 
   unpipe@1.0.0: {}
 

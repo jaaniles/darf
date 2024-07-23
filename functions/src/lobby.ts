@@ -1,62 +1,208 @@
 import * as functions from "firebase-functions";
 import { FieldValue } from "firebase-admin/firestore";
-import { v4 as uuidv4 } from "uuid";
+import pokemon from "pokemon";
 
 import { db } from "./index";
 import { createPlayers } from "./player";
+import { createRoundProps } from "./round";
+
+type Lobby = {
+  admin: string;
+  players: string[];
+  joinCode: string;
+};
 
 /* Create a new lobby 
 /  body: user
 */
 export const createLobby = functions.https.onRequest(async (req, res) => {
-  const user = req.body.user;
+  const userId = req.body.userId;
 
-  const docRef = db.collection("lobbiesv2").doc();
+  const docRef = db.collection("lobby").doc();
+
+  const joinCode = pokemon.random().toLocaleLowerCase();
 
   await docRef.create({
-    admin: user,
-    players: [user],
+    admin: userId,
+    players: [userId],
+    joinCode,
   });
 
-  res.send({ lobbyId: docRef.id });
+  res.status(200).send({
+    data: {
+      lobbyId: docRef.id,
+      joinCode,
+    },
+  });
 });
 
 /* User joins a lobby
-/  body: user, lobbyId
+/  body: user, joinCode
 */
 export const joinLobby = functions.https.onRequest(async (req, res) => {
-  const { user, lobbyId } = req.body;
+  const { userId, joinCode } = req.body;
 
-  const lobbyRef = db.collection("lobbiesv2").doc(lobbyId);
+  if (!userId || !joinCode) {
+    res.status(400).send("Missing required fields, aborting joinLobby");
+    return;
+  }
 
-  console.log(`user: ${user}, joining lobbyId: ${lobbyId}`);
+  const query = await db
+    .collection("lobby")
+    .where("joinCode", "==", joinCode.toLocaleLowerCase())
+    .get();
 
-  const userId = user || uuidv4();
+  if (query.empty) {
+    res.status(404).send("Lobby not found");
+    return;
+  }
 
-  await lobbyRef.update({
-    players: FieldValue.arrayUnion(userId),
-  });
+  const lobbyRef = query.docs[0].ref;
 
-  res.status(200).send({ lobbyId: lobbyRef.id, userId });
+  try {
+    await lobbyRef.update({
+      players: FieldValue.arrayUnion(userId),
+    });
+    res.status(200).send({
+      data: {
+        lobbyId: lobbyRef.id,
+        userId,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating lobby players:", error);
+    res.status(500).send("Failed in: join lobby");
+    return;
+  }
 });
 
 /* User exits lobby
 /  body: user, lobbyId
 */
 export const exitLobby = functions.https.onRequest(async (req, res) => {
-  const { user, lobbyId } = req.body;
+  const { userId, lobbyId } = req.body;
 
-  const lobbyRef = db.collection("lobbiesv2").doc(lobbyId);
+  const lobbyRef = db.collection("lobby").doc(lobbyId);
 
-  console.log(`user: ${user}, leaving lobbyId: ${lobbyId}`);
+  console.log(`user: ${userId}, leaving lobbyId: ${lobbyId}`);
 
-  await lobbyRef.update({
-    players: FieldValue.arrayRemove(user),
+  try {
+    await lobbyRef.update({
+      players: FieldValue.arrayRemove(userId),
+    });
+  } catch (error) {
+    console.error("Error updating lobby players:", error);
+    res.status(500).send("Failed in: exit lobby");
+  }
+
+  res.status(200).send({
+    data: {
+      lobbyId: lobbyRef.id,
+      userId,
+    },
   });
-
-  res.send({ lobbyId: lobbyRef.id });
 });
 
+/* Admin kicks user from lobby
+/  body: userId, lobbyId, userToKick
+/  requires: userId to be the admin of the lobby
+*/
+export const kickFromLobby = functions.https.onRequest(async (req, res) => {
+  const { userId, lobbyId, userToKick } = req.body;
+
+  if (!userId || !lobbyId || !userToKick) {
+    res.status(400).send("Missing required fields, aborting kickFromLobby");
+    return;
+  }
+
+  const lobbyRef = db.collection("lobby").doc(lobbyId);
+  const lobby = (await lobbyRef.get()).data() as Lobby;
+
+  if (!lobby) {
+    res.status(404).send("Lobby not found, aborting kickFromLobby");
+    return;
+  }
+
+  const lobbyAdmin = lobby.admin;
+  if (lobbyAdmin !== userId) {
+    res.status(403).send("Only the admin can kick players");
+    return;
+  }
+
+  if (lobbyAdmin === userToKick) {
+    res.status(403).send("Admin cannot kick themselves");
+    return;
+  }
+
+  try {
+    await lobbyRef.update({
+      players: FieldValue.arrayRemove(userToKick),
+    });
+
+    res.status(200).send({
+      data: {
+        lobbyId: lobbyRef.id,
+        userToKick: userToKick,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating lobby players:", error);
+    res.status(500).send("Failed in: kick from lobby");
+    return;
+  }
+});
+
+export const lobbyPlayerReady = functions.https.onRequest(async (req, res) => {
+  const { userId, lobbyId } = req.body;
+  const { ready } = req.query;
+
+  if (!userId || !lobbyId || !ready) {
+    res.status(400).send("Missing required fields, aborting lobbyPlayerReady");
+    return;
+  }
+
+  const lobbyRef = db.collection("lobby").doc(lobbyId);
+  const lobby = (await lobbyRef.get()).data() as Lobby;
+
+  if (!lobby) {
+    res.status(404).send("Lobby not found, aborting lobbyPlayerReady");
+    return;
+  }
+
+  switch (ready) {
+    case "ready":
+      await lobbyRef.update({
+        ready: FieldValue.arrayUnion(userId),
+      });
+
+      res.status(200).send({
+        data: {
+          lobbyId: lobbyRef.id,
+          userId,
+        },
+      });
+      break;
+    case "cancel":
+      await lobbyRef.update({
+        ready: FieldValue.arrayRemove(userId),
+      });
+
+      res.status(200).send({
+        data: {
+          lobbyId: lobbyRef.id,
+          userId,
+        },
+      });
+      break;
+    default:
+      res.status(400).send("Invalid action");
+      return;
+  }
+});
+
+/* Game admin starts game from lobby
+/ body: user, lobbyId
+*/
 export const startGameFromLobby = functions.https.onRequest(
   async (req, res) => {
     const { lobbyId, user } = req.body;
@@ -68,7 +214,7 @@ export const startGameFromLobby = functions.https.onRequest(
       return;
     }
 
-    const lobbyRef = db.collection("lobbiesv2").doc(lobbyId);
+    const lobbyRef = db.collection("lobby").doc(lobbyId);
     const lobby = await lobbyRef.get();
 
     if (!lobby.exists) {
@@ -89,15 +235,18 @@ export const startGameFromLobby = functions.https.onRequest(
     const newGameRef = db.collection("game").doc();
     const newRoundRef = db.collection("round").doc();
 
-    newRoundRef.create({
-      gameId: newGameRef.id,
-      board: [],
-      players,
-      continuePlayers: [],
-      campPlayers: [],
-      rewardStack: [],
-      counter: 1,
+    lobbyRef.update({
+      currentRoundId: newRoundRef.id,
     });
+
+    newRoundRef.create(
+      createRoundProps({
+        gameId: newGameRef.id,
+        lobbyId,
+        playersFromLobby,
+        counter: 1,
+      })
+    );
 
     newGameRef.create({
       lobbyId,
@@ -106,81 +255,11 @@ export const startGameFromLobby = functions.https.onRequest(
       currentRoundId: newRoundRef.id,
     });
 
-    res
-      .status(200)
-      .send(
-        `Game started with gameId: ${newGameRef.id}, roundId: ${newRoundRef.id}`
-      );
+    res.status(200).send({
+      data: {
+        gameId: newGameRef.id,
+        roundId: newRoundRef.id,
+      },
+    });
   }
 );
-
-// DEPRECATED
-/* Admin starts game from lobby
-/  body: user, lobbyId
-*/
-/* 
-export const startGameFromLobby = functions.https.onRequest(
-  async (req, res) => {
-    const { lobbyId, user } = req.body;
-
-    if (!lobbyId || !user) {
-      res
-        .status(400)
-        .send("Missing required fields, aborting startGameFromLobby");
-      return;
-    }
-
-    const lobbyRef = db.collection("lobbiesv2").doc(lobbyId);
-    const lobby = await lobbyRef.get();
-
-    if (!lobby.exists) {
-      res.status(404).send("Lobby not found, aborting startGameFromLobby");
-      return;
-    }
-
-    const lobbyAdmin = lobby.data()?.admin;
-
-    if (lobbyAdmin !== user) {
-      res.status(403).send("Only the admin can start the game");
-      return;
-    }
-
-    const playersFromLobby = lobby.data()?.players;
-    const players = createPlayers(playersFromLobby);
-
-    const newGameRef = db.collection("game").doc();
-    const newRoundState = db.collection("roundState").doc();
-    const newRoundRef = db.collection("round").doc();
-
-    newRoundRef.create({
-      gameId: newGameRef.id,
-      roundStateId: newRoundState.id,
-      board: [],
-      players,
-      continuePlayers: [],
-      campPlayers: [],
-      counter: 1,
-    });
-
-    newGameRef.create({
-      lobbyId,
-      players,
-      round: 1,
-      currentRoundId: newRoundRef.id,
-    });
-
-    newRoundState.create({
-      roundId: newRoundRef.id,
-      gameId: newGameRef.id,
-      counter: 0,
-      players: playersFromLobby,
-    });
-
-    res
-      .status(200)
-      .send(
-        `Game started with gameId: ${newGameRef.id}, roundId: ${newRoundRef.id}`
-      );
-  }
-);
-*/

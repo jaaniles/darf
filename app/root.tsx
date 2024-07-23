@@ -11,6 +11,8 @@ import {
 export async function loader() {
   return json({
     ENV: {
+      API_BASE_URL: process.env.API_BASE_URL,
+      USE_EMULATOR: process.env.USE_EMULATOR,
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
       FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT,
     },
