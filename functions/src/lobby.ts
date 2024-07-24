@@ -167,7 +167,7 @@ export const kickFromLobby = onRequest(async (req, res) => {
   }
 });
 
-export const lobbyPlayerReady = onRequest(async (req, res) => {
+export const lobbyPlayerReady = onRequest({ cors: true }, async (req, res) => {
   const { userId, lobbyId } = req.body;
   const { ready } = req.query;
 
