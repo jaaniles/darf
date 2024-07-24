@@ -15,12 +15,10 @@ export function LoginLayout({ children }: Props) {
     <motion.main
       {...stylex.props(styles.root)}
       initial={{
-        background:
-          "radial-gradient(at 10%, rgba(17,19,31,1) 0%, rgba(17,19,31,1) 10%, rgba(17,17,19,1) 100%)",
+        background: `radial-gradient(at 20%, rgba(48,32,8,1) 15%, rgba(17,19,31,1) 50%, rgba(17,17,19,1) 100%)`,
       }}
       animate={{
-        background:
-          "radial-gradient(at 10%, rgba(48,32,8,1) 15%, rgba(17,19,31,1) 50%, rgba(17,17,19,1) 100%)",
+        background: `radial-gradient(at 0%, rgba(17,19,31,1) 0%, rgba(17,19,31,1) 10%, rgba(17,17,19,1) 100%)`,
         transition: {
           duration: 5,
           repeat: Infinity,
@@ -32,10 +30,23 @@ export function LoginLayout({ children }: Props) {
         DARF
       </Headline>
 
-      <img
+      <motion.img
         {...stylex.props(styles.splash)}
         src={splash}
         alt="Splash of a dwarf examining a diamond"
+        initial={{
+          filter: "grayscale(0%)",
+          opacity: 1,
+        }}
+        animate={{
+          filter: "grayscale(100%)",
+          opacity: 0.1,
+          transition: {
+            duration: 5,
+            repeat: Infinity,
+            repeatType: "mirror",
+          },
+        }}
       />
 
       <div {...stylex.props(styles.content)}>{children}</div>
@@ -71,6 +82,7 @@ const styles = stylex.create({
     maxWidth: 350,
   },
   splash: {
+    maxWidth: 250,
     width: "80%",
     height: "auto",
   },

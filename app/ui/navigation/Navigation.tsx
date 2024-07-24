@@ -24,7 +24,7 @@ export function Navigation() {
 
 const styles = stylex.create({
   root: {
-    position: "absolute",
+    position: "fixed",
     bottom: 0,
     left: 0,
 
