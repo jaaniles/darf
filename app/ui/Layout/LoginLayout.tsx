@@ -26,7 +26,7 @@ export function LoginLayout({ children }: Props) {
         },
       }}
     >
-      <Headline as="h1" size="hg" color="primary">
+      <Headline as="h1" size="hg" color="primary" weight="bold">
         DARF
       </Headline>
 
@@ -76,7 +76,7 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
 
-    padding: `${spacing._32} ${spacing._32}`,
+    padding: `${spacing._72} ${spacing._32}`,
 
     width: "100%",
     maxWidth: 350,
