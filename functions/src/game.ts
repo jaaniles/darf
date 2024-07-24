@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import { db } from ".";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
@@ -38,7 +38,7 @@ export type Game = {
   # │> Deal next tile, update round state                                                       
   # └────────────────────────────────────────────────────────────────────────────┘
   */
-export const nextTurn = functions.https.onRequest(async (req, res) => {
+export const nextTurn = onRequest(async (req, res) => {
   const { roundId, user } = req.body;
 
   if (!roundId || !user) {
@@ -249,7 +249,7 @@ export const handleUpdateGameScore = async ({
 
 //#region playerAction
 // Player chooses action in round: "continue" or "exit"
-export const playerAction = functions.https.onRequest(async (req, res) => {
+export const playerAction = onRequest(async (req, res) => {
   const { roundId, user } = req.body;
   const { action } = req.query;
 

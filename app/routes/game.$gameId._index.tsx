@@ -3,6 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { DecodedIdToken } from "firebase-admin/auth";
 import GamePage from "~/game/GamePage/GamePage";
 import { requireUserSession } from "~/session.server";
+import { BaseLayout } from "~/ui/Layout/BaseLayout";
 
 export const loader: LoaderFunction = async ({ params, request }) => {
   const { gameId } = params;
@@ -23,5 +24,9 @@ export const loader: LoaderFunction = async ({ params, request }) => {
 export default function GameRoute() {
   const { gameId, userId } = useLoaderData<typeof loader>();
 
-  return <GamePage gameId={gameId} userId={userId} />;
+  return (
+    <BaseLayout>
+      <GamePage gameId={gameId} userId={userId} />
+    </BaseLayout>
+  );
 }

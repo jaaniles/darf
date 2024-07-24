@@ -16,7 +16,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   if (!response) {
     console.error("Player action failed");
-    return;
   }
 
   return redirect(`/game/${gameId}`);

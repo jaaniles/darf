@@ -1,7 +1,15 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { Form, json, Link, useLoaderData } from "@remix-run/react";
+import { Form, json, useLoaderData } from "@remix-run/react";
 import { DecodedIdToken } from "firebase-admin/auth";
+
 import { requireUserSession } from "~/session.server";
+import { Button } from "~/ui/Button/Button";
+import { TextField } from "~/ui/fields/TextField";
+import { Fieldset } from "~/ui/form/Fieldset";
+import { BaseLayout } from "~/ui/Layout/BaseLayout";
+import { Link } from "~/ui/Link/Link";
+import { Stack } from "~/ui/Stack/Stack";
+import { Headline } from "~/ui/typography/Headline";
 
 export const meta: MetaFunction = () => {
   return [
@@ -22,22 +30,29 @@ export default function Index() {
   const { uid } = useLoaderData<typeof loader>();
 
   return (
-    <div className="font-sans p-4">
-      <Link to="/logout">Logout</Link>
-      <h1>Create</h1>
-      <Form method="post" action="/lobby/create">
-        <input type="hidden" value={uid} name="userId" />
-        <button type="submit">Create lobby</button>
-      </Form>
+    <BaseLayout>
+      <Stack spacing={32}>
+        <Headline as="h1">Greetings, dwarf</Headline>
+        <Form method="post" action="/lobby/create">
+          <Fieldset>
+            <input type="hidden" value={uid} name="userId" />
+            <Button type="submit" text="Start an expedition" />
+          </Fieldset>
+        </Form>
 
-      <hr />
+        <Headline as="h2">Join an expedition</Headline>
+        <Form method="post" action="/lobby/join">
+          <Fieldset>
+            <Stack spacing={16}>
+              <input type="hidden" value={uid} name="userId" />
+              <TextField label="Code" name="joinCode" id="joinCode" />
+              <Button type="submit" text="Request to join" />
+            </Stack>
+          </Fieldset>
+        </Form>
 
-      <h1>Join</h1>
-      <Form method="post" action="/lobby/join">
-        <input type="hidden" value={uid} name="userId" />
-        <input type="text" name="joinCode" />
-        <button type="submit">Join lobby</button>
-      </Form>
-    </div>
+        <Link to="/logout">{">"} Logout</Link>
+      </Stack>
+    </BaseLayout>
   );
 }

@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import pokemon from "pokemon";
 
@@ -7,15 +7,18 @@ import { createPlayers } from "./player";
 import { createRoundProps } from "./round";
 
 type Lobby = {
+  currentRoundId: string;
   admin: string;
   players: string[];
   joinCode: string;
+  ready?: string[];
+  gameId?: string;
 };
 
 /* Create a new lobby 
 /  body: user
 */
-export const createLobby = functions.https.onRequest(async (req, res) => {
+export const createLobby = onRequest(async (req, res) => {
   const userId = req.body.userId;
 
   const docRef = db.collection("lobby").doc();
@@ -39,7 +42,7 @@ export const createLobby = functions.https.onRequest(async (req, res) => {
 /* User joins a lobby
 /  body: user, joinCode
 */
-export const joinLobby = functions.https.onRequest(async (req, res) => {
+export const joinLobby = onRequest(async (req, res) => {
   const { userId, joinCode } = req.body;
 
   if (!userId || !joinCode) {
@@ -79,7 +82,7 @@ export const joinLobby = functions.https.onRequest(async (req, res) => {
 /* User exits lobby
 /  body: user, lobbyId
 */
-export const exitLobby = functions.https.onRequest(async (req, res) => {
+export const exitLobby = onRequest(async (req, res) => {
   const { userId, lobbyId } = req.body;
 
   const lobbyRef = db.collection("lobby").doc(lobbyId);
@@ -107,7 +110,7 @@ export const exitLobby = functions.https.onRequest(async (req, res) => {
 /  body: userId, lobbyId, userToKick
 /  requires: userId to be the admin of the lobby
 */
-export const kickFromLobby = functions.https.onRequest(async (req, res) => {
+export const kickFromLobby = onRequest(async (req, res) => {
   const { userId, lobbyId, userToKick } = req.body;
 
   if (!userId || !lobbyId || !userToKick) {
@@ -152,7 +155,7 @@ export const kickFromLobby = functions.https.onRequest(async (req, res) => {
   }
 });
 
-export const lobbyPlayerReady = functions.https.onRequest(async (req, res) => {
+export const lobbyPlayerReady = onRequest(async (req, res) => {
   const { userId, lobbyId } = req.body;
   const { ready } = req.query;
 
@@ -203,63 +206,62 @@ export const lobbyPlayerReady = functions.https.onRequest(async (req, res) => {
 /* Game admin starts game from lobby
 / body: user, lobbyId
 */
-export const startGameFromLobby = functions.https.onRequest(
-  async (req, res) => {
-    const { lobbyId, user } = req.body;
+export const startGameFromLobby = onRequest(async (req, res) => {
+  const { lobbyId, user } = req.body;
 
-    if (!lobbyId || !user) {
-      res
-        .status(400)
-        .send("Missing required fields, aborting startGameFromLobby");
-      return;
-    }
-
-    const lobbyRef = db.collection("lobby").doc(lobbyId);
-    const lobby = await lobbyRef.get();
-
-    if (!lobby.exists) {
-      res.status(404).send("Lobby not found, aborting startGameFromLobby");
-      return;
-    }
-
-    const lobbyAdmin = lobby.data()?.admin;
-
-    if (lobbyAdmin !== user) {
-      res.status(403).send("Only the admin can start the game");
-      return;
-    }
-
-    const playersFromLobby = lobby.data()?.players;
-    const players = createPlayers(playersFromLobby);
-
-    const newGameRef = db.collection("game").doc();
-    const newRoundRef = db.collection("round").doc();
-
-    lobbyRef.update({
-      currentRoundId: newRoundRef.id,
-    });
-
-    newRoundRef.create(
-      createRoundProps({
-        gameId: newGameRef.id,
-        lobbyId,
-        playersFromLobby,
-        counter: 1,
-      })
-    );
-
-    newGameRef.create({
-      lobbyId,
-      players,
-      round: 1,
-      currentRoundId: newRoundRef.id,
-    });
-
-    res.status(200).send({
-      data: {
-        gameId: newGameRef.id,
-        roundId: newRoundRef.id,
-      },
-    });
+  if (!lobbyId || !user) {
+    res
+      .status(400)
+      .send("Missing required fields, aborting startGameFromLobby");
+    return;
   }
-);
+
+  const lobbyRef = db.collection("lobby").doc(lobbyId);
+  const lobby = await lobbyRef.get();
+
+  if (!lobby.exists) {
+    res.status(404).send("Lobby not found, aborting startGameFromLobby");
+    return;
+  }
+
+  const lobbyAdmin = lobby.data()?.admin;
+
+  if (lobbyAdmin !== user) {
+    res.status(403).send("Only the admin can start the game");
+    return;
+  }
+
+  const playersFromLobby = lobby.data()?.players;
+  const players = createPlayers(playersFromLobby);
+
+  const newGameRef = db.collection("game").doc();
+  const newRoundRef = db.collection("round").doc();
+
+  lobbyRef.update({
+    gameId: newGameRef.id,
+    currentRoundId: newRoundRef.id,
+  });
+
+  newRoundRef.create(
+    createRoundProps({
+      gameId: newGameRef.id,
+      lobbyId,
+      playersFromLobby,
+      counter: 1,
+    })
+  );
+
+  newGameRef.create({
+    lobbyId,
+    players,
+    round: 1,
+    currentRoundId: newRoundRef.id,
+  });
+
+  res.status(200).send({
+    data: {
+      gameId: newGameRef.id,
+      roundId: newRoundRef.id,
+    },
+  });
+});

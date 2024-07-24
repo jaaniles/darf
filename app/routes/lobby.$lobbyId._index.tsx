@@ -3,6 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { DecodedIdToken } from "firebase-admin/auth";
 import LobbyPage from "~/lobby/LobbyPage/LobbyPage";
 import { requireUserSession } from "~/session.server";
+import { BaseLayout } from "~/ui/Layout/BaseLayout";
 
 export const loader: LoaderFunction = async ({ params, request }) => {
   const { lobbyId } = params;
@@ -23,5 +24,9 @@ export const loader: LoaderFunction = async ({ params, request }) => {
 export default function LobbyPageRoute() {
   const { lobbyId, userId } = useLoaderData<typeof loader>();
 
-  return <LobbyPage lobbyId={lobbyId} userId={userId} />;
+  return (
+    <BaseLayout>
+      <LobbyPage lobbyId={lobbyId} userId={userId} />
+    </BaseLayout>
+  );
 }

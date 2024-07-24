@@ -1,8 +1,9 @@
-import { Link } from "@remix-run/react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Game } from "functions/src/game";
 import { useEffect, useState } from "react";
 import { db } from "~/firebase.client";
+import { BaseLayout } from "~/ui/Layout/BaseLayout";
+import { Link } from "~/ui/Link/Link";
 
 type Props = {
   gameId: string;
@@ -28,14 +29,12 @@ export default function GameOverPage({ gameId, userId }: Props) {
   }, [gameId]);
 
   return (
-    <div>
+    <BaseLayout>
       <h1>Game over:</h1>
       <p>You are: {userId}</p>
       <p>Game id: {gameId}</p>
 
       <Link to="/">Index</Link>
-
-      <hr />
 
       <div>
         <h2>Players</h2>
@@ -48,8 +47,6 @@ export default function GameOverPage({ gameId, userId }: Props) {
           ))}
         </ul>
       </div>
-
-      <pre>{JSON.stringify(state)}</pre>
-    </div>
+    </BaseLayout>
   );
 }

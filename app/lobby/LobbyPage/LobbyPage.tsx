@@ -3,6 +3,7 @@ import { useNavigate } from "@remix-run/react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "~/firebase.client";
+import { Button } from "~/ui/Button/Button";
 
 type Props = {
   lobbyId: string;
@@ -10,11 +11,12 @@ type Props = {
 };
 
 type Lobby = {
+  currentRoundId: string;
   admin: string;
   players: string[];
-  ready?: string[];
   joinCode: string;
-  currentRoundId: string;
+  ready?: string[];
+  gameId?: string;
 };
 
 export default function LobbyPage({ lobbyId, userId }: Props) {
@@ -23,10 +25,10 @@ export default function LobbyPage({ lobbyId, userId }: Props) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (lobbyState?.currentRoundId) {
-      navigate(`/game/${lobbyState.currentRoundId}`);
+    if (lobbyState?.gameId) {
+      navigate(`/game/${lobbyState.gameId}`);
     }
-  }, [lobbyState?.currentRoundId, navigate]);
+  }, [lobbyState?.gameId, navigate]);
 
   useEffect(() => {
     const lobbyExists = !!lobbyState?.players;
@@ -67,7 +69,7 @@ export default function LobbyPage({ lobbyId, userId }: Props) {
       <form method="POST" action={`/lobby/${lobbyId}/ready`}>
         <input type="hidden" name="userId" value={userId} />
         <input type="hidden" name="ready" value={isReady ? "true" : "false"} />
-        <button type="submit">{isReady ? "Cancel" : "Ready"}</button>
+        <Button type="submit" text={isReady ? "Cancel" : "Ready"} />
       </form>
 
       <h2>Users in lobby:</h2>
@@ -83,7 +85,7 @@ export default function LobbyPage({ lobbyId, userId }: Props) {
               <form method="POST" action={`/lobby/${lobbyId}/kick`}>
                 <input type="hidden" name="userToKick" value={player} />
                 <input type="hidden" name="userId" value={userId} />
-                <button type="submit">Kick</button>
+                <Button type="submit" text="Kick" variant="secondary" />
               </form>
             )}
           </li>
@@ -92,7 +94,7 @@ export default function LobbyPage({ lobbyId, userId }: Props) {
         {allReady && (
           <form method="POST" action={`/lobby/${lobbyId}/start`}>
             <input type="hidden" name="userId" value={userId} />
-            <button type="submit">Start expedition</button>
+            <Button type="submit" text="Start expedition" variant="secondary" />
           </form>
         )}
       </ul>

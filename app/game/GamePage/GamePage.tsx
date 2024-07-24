@@ -4,6 +4,9 @@ import { Game } from "functions/src/game";
 import { Round } from "functions/src/round";
 import { useEffect, useState } from "react";
 import { db } from "~/firebase.client";
+import { Button } from "~/ui/Button/Button";
+import { Fieldset } from "~/ui/form/Fieldset";
+import { Stack } from "~/ui/Stack/Stack";
 
 type Props = {
   gameId: string;
@@ -77,13 +80,25 @@ export default function GamePage({ gameId, userId }: Props) {
           method="POST"
           action={`/game/${gameId}/round/${roundId}/playerAction`}
         >
-          <input type="hidden" name="userId" value={userId} />
-          <button type="submit" name="action" value="continue">
-            Delve deeper
-          </button>
-          <button type="submit" name="action" value="exit">
-            Go to camp
-          </button>
+          <Fieldset>
+            <Stack spacing={16} direction="horizontal">
+              <input type="hidden" name="userId" value={userId} />
+              <Button
+                type="submit"
+                name="action"
+                value="continue"
+                text="Delve deeper"
+                variant="secondary"
+              />
+              <Button
+                type="submit"
+                name="action"
+                value="exit"
+                text="Go to camp"
+                variant="secondary"
+              />
+            </Stack>
+          </Fieldset>
         </form>
       </div>
 
@@ -96,7 +111,7 @@ export default function GamePage({ gameId, userId }: Props) {
             action={`/game/${gameId}/round/${roundId}/nextTurn`}
           >
             <input type="hidden" name="userId" value={userId} />
-            <button type="submit">Next</button>
+            <Button type="submit" text="Next turn" />
           </form>
         </div>
       )}
@@ -106,13 +121,9 @@ export default function GamePage({ gameId, userId }: Props) {
       {state?.board.map((tile, i) => <div key={i}>{tile.name}</div>)}
 
       <hr />
-      <h2>Data</h2>
 
       <h3>State</h3>
       <pre>{JSON.stringify(state, null, 2)}</pre>
-
-      <h3>Board</h3>
-      <pre>{JSON.stringify(state?.board, null, 2)}</pre>
     </div>
   );
 }
