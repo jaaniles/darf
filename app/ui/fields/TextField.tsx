@@ -1,3 +1,5 @@
+import stylex from "@stylexjs/stylex";
+import { spacing, theme } from "~/tokens.stylex";
 import { TextInput } from "~/ui/inputs/TextInput";
 import { Stack } from "~/ui/Stack/Stack";
 
@@ -19,7 +21,9 @@ export function TextField({
 }: Props) {
   return (
     <Stack spacing={4}>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} {...stylex.props(labelStyles.root)}>
+        {label}
+      </label>
 
       <TextInput
         id={id}
@@ -30,3 +34,16 @@ export function TextField({
     </Stack>
   );
 }
+
+const labelStyles = stylex.create({
+  root: {
+    display: "flex",
+    alignItems: "center",
+    gap: spacing._8,
+    cursor: "pointer",
+    lineHeight: 1.2,
+    letterSpacing: "1%",
+
+    color: theme.textPrimary,
+  },
+});

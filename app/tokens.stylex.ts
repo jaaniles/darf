@@ -263,12 +263,12 @@ export const theme = stylex.defineVars({
   /*
   / Accent
   */
-  accentBackground: colors.iris3,
-  accentBackgroundHover: colors.iris4,
-  accentBackgroundActive: colors.iris5,
-  accentBorder: colors.iris6,
-  accentBorderInteractive: colors.iris7,
-  accentBorderHover: colors.iris8,
+  accentBackground: colors.amber3,
+  accentBackgroundHover: colors.amber4,
+  accentBackgroundActive: colors.amber5,
+  accentBorder: colors.amber6,
+  accentBorderInteractive: colors.amber7,
+  accentBorderHover: colors.amber8,
 
   /*
   / Text
@@ -279,8 +279,12 @@ export const theme = stylex.defineVars({
   textNeutral: colors.slate12,
   textNeutralHover: colors.slate11,
 
+  textPrimary: colors.amber12,
+  textSecondary: colors.amber11,
+  /*
   textPrimary: colors.indigo12,
   textSecondary: colors.indigo11,
+  */
 
   textAccent: colors.iris11,
   textAccentHover: colors.iris12,

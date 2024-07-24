@@ -20,13 +20,14 @@ export function LoginLayout({ children }: Props) {
       animate={{
         background: `radial-gradient(at 0%, rgba(17,19,31,1) 0%, rgba(17,19,31,1) 10%, rgba(17,17,19,1) 100%)`,
         transition: {
-          duration: 5,
+          duration: 8,
           repeat: Infinity,
           repeatType: "mirror",
+          ease: "anticipate",
         },
       }}
     >
-      <Headline as="h1" size="hg" color="primary" weight="bold">
+      <Headline as="h1" size="hg" color="primary" weight="bold" align="center">
         DARF
       </Headline>
 
@@ -42,9 +43,10 @@ export function LoginLayout({ children }: Props) {
           filter: "grayscale(100%)",
           opacity: 0.1,
           transition: {
-            duration: 5,
+            duration: 8,
             repeat: Infinity,
             repeatType: "mirror",
+            ease: "anticipate",
           },
         }}
       />

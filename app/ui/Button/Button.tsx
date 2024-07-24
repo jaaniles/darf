@@ -83,7 +83,7 @@ const styles = stylex.create({
 
 const variantStyles = stylex.create({
   primary: {
-    color: theme.textAccent,
+    color: theme.textPrimary,
     border: border.interactive,
     background: {
       default: theme.accentBackground,

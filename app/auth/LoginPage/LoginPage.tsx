@@ -26,7 +26,13 @@ export default function LoginPage() {
   return (
     <LoginLayout>
       <Stack spacing={16}>
-        <Headline as="h2" size="sm" color="primary" weight="bold">
+        <Headline
+          as="h2"
+          size="sm"
+          color="primary"
+          weight="bold"
+          align="center"
+        >
           The Expedition needs you!
         </Headline>
         <Button
