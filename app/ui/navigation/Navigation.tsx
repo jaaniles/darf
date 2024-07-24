@@ -13,7 +13,7 @@ export function Navigation() {
           </Link>
         </li>
         <li>
-          <Link to="/">
+          <Link to="/profile">
             <GearIcon width={25} height={25} />
           </Link>
         </li>

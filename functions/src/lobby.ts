@@ -19,17 +19,28 @@ type Lobby = {
 /  body: user
 */
 export const createLobby = onRequest(async (req, res) => {
-  const userId = req.body.userId;
+  const { userId, displayName } = req.body;
+
+  console.log("Create lobby.", userId, displayName);
+
+  if (!userId || !displayName) {
+    res
+      .status(400)
+      .send({ userId, error: true, message: "Missing parameters" });
+    return;
+  }
 
   const docRef = db.collection("lobby").doc();
-
   const joinCode = pokemon.random().toLocaleLowerCase();
 
   await docRef.create({
     admin: userId,
     players: [userId],
+    users: [{ userId, displayName }],
     joinCode,
   });
+
+  console.log("Lobby has been created");
 
   res.status(200).send({
     data: {
@@ -43,7 +54,7 @@ export const createLobby = onRequest(async (req, res) => {
 /  body: user, joinCode
 */
 export const joinLobby = onRequest(async (req, res) => {
-  const { userId, joinCode } = req.body;
+  const { userId, displayName, joinCode } = req.body;
 
   if (!userId || !joinCode) {
     res.status(400).send("Missing required fields, aborting joinLobby");
@@ -65,6 +76,7 @@ export const joinLobby = onRequest(async (req, res) => {
   try {
     await lobbyRef.update({
       players: FieldValue.arrayUnion(userId),
+      users: FieldValue.arrayUnion({ userId, displayName }),
     });
     res.status(200).send({
       data: {
@@ -233,6 +245,7 @@ export const startGameFromLobby = onRequest(async (req, res) => {
 
   const playersFromLobby = lobby.data()?.players;
   const players = createPlayers(playersFromLobby);
+  const users = lobby.data()?.users;
 
   const newGameRef = db.collection("game").doc();
   const newRoundRef = db.collection("round").doc();
@@ -254,6 +267,7 @@ export const startGameFromLobby = onRequest(async (req, res) => {
   newGameRef.create({
     lobbyId,
     players,
+    users,
     round: 1,
     currentRoundId: newRoundRef.id,
   });

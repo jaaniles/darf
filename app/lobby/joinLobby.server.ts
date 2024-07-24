@@ -3,6 +3,7 @@ import { joinLobbyRequest } from "~/lobby/joinLobbyRequest.server";
 type Input = {
   userId: string;
   joinCode: string;
+  displayName: string;
 };
 
 type Output = {

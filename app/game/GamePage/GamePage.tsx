@@ -4,8 +4,8 @@ import { Game } from "functions/src/game";
 import { Round } from "functions/src/round";
 import { useEffect, useState } from "react";
 import { db } from "~/firebase.client";
+import { jsonPostRequest } from "~/request.client";
 import { Button } from "~/ui/Button/Button";
-import { Fieldset } from "~/ui/form/Fieldset";
 import { Stack } from "~/ui/Stack/Stack";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
 
 export default function GamePage({ gameId, userId }: Props) {
   const [roundId, setRoundId] = useState<string | null>(null);
+  const [gameState, setGameState] = useState<Game | null>(null);
   const [state, setState] = useState<Round | null>(null);
   const navigate = useNavigate();
 
@@ -26,6 +27,8 @@ export default function GamePage({ gameId, userId }: Props) {
       if (!data) {
         return;
       }
+
+      setGameState(data);
 
       if (data.gameOver) {
         navigate(`/game/${gameId}/results`);
@@ -57,10 +60,35 @@ export default function GamePage({ gameId, userId }: Props) {
     return () => unsub();
   }, [roundId]);
 
+  const handlePlayerContinue = () => {
+    jsonPostRequest(`/playerAction?action=continue`, {
+      roundId,
+      user: userId,
+    });
+  };
+
+  const handlePlayerExit = () => {
+    jsonPostRequest(`/playerAction?action=exit`, {
+      roundId,
+      user: userId,
+    });
+  };
+
+  const handleNextTurn = () => {
+    jsonPostRequest(`/nextTurn`, {
+      roundId,
+      user: userId,
+    });
+  };
+
   const isInNudgeList = state?.nudge.includes(userId);
   const hasChosenAction =
     state?.continuePlayers.includes(userId) ||
     state?.exitPlayers.includes(userId);
+
+  if (!state) {
+    return null;
+  }
 
   return (
     <div>
@@ -76,43 +104,22 @@ export default function GamePage({ gameId, userId }: Props) {
         <p>Choose your action this turn:</p>
         <p>{state?.continuePlayers.includes(userId) && "✅"}</p>
         <p>{state?.exitPlayers.includes(userId) && "❌"}</p>
-        <form
-          method="POST"
-          action={`/game/${gameId}/round/${roundId}/playerAction`}
-        >
-          <Fieldset>
-            <Stack spacing={16} direction="horizontal">
-              <input type="hidden" name="userId" value={userId} />
-              <Button
-                type="submit"
-                name="action"
-                value="continue"
-                text="Delve deeper"
-                variant="secondary"
-              />
-              <Button
-                type="submit"
-                name="action"
-                value="exit"
-                text="Go to camp"
-                variant="secondary"
-              />
-            </Stack>
-          </Fieldset>
-        </form>
+
+        <Stack spacing={16} direction="horizontal">
+          <Button
+            type="button"
+            text="Continue"
+            onClick={handlePlayerContinue}
+          />
+          <Button type="button" text="Exit" onClick={handlePlayerExit} />
+        </Stack>
       </div>
 
       <hr />
       {hasChosenAction && (
         <div>
           <p>Next turn</p>
-          <form
-            method="POST"
-            action={`/game/${gameId}/round/${roundId}/nextTurn`}
-          >
-            <input type="hidden" name="userId" value={userId} />
-            <Button type="submit" text="Next turn" />
-          </form>
+          <Button type="submit" text="Next turn" onClick={handleNextTurn} />
         </div>
       )}
 
@@ -124,6 +131,9 @@ export default function GamePage({ gameId, userId }: Props) {
 
       <h3>State</h3>
       <pre>{JSON.stringify(state, null, 2)}</pre>
+
+      <h3>GameState</h3>
+      <pre>{JSON.stringify(gameState, null, 2)}</pre>
     </div>
   );
 }

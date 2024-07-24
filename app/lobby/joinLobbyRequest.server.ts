@@ -5,6 +5,7 @@ import { Try, unwrap, withTry } from "~/try.server";
 type Input = {
   userId: string;
   joinCode: string;
+  displayName: string;
 };
 
 const JoinLobbyResponse = z.object({
@@ -22,6 +23,7 @@ export async function joinLobbyRequest(
   return await withTry(async () => {
     const response = await jsonPostRequest(`/joinLobby`, {
       joinCode: input.joinCode,
+      displayname: input.displayName,
       userId: input.userId,
     });
 

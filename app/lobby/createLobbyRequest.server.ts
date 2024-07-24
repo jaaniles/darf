@@ -4,6 +4,7 @@ import { Try, unwrap, withTry } from "~/try.server";
 
 type Input = {
   userId: string;
+  displayName: string;
 };
 
 const CreateLobbyResponse = z.object({
@@ -21,6 +22,7 @@ export async function createLobbyRequest(
   return await withTry(async () => {
     const response = await jsonPostRequest(`/createLobby`, {
       userId: input.userId,
+      displayName: input.displayName,
     });
 
     return unwrap(await validateResponse(response, CreateLobbyResponse));

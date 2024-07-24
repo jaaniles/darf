@@ -2,6 +2,7 @@ import { createLobbyRequest } from "~/lobby/createLobbyRequest.server";
 
 type Input = {
   userId: string;
+  displayName: string;
 };
 
 type Output = {

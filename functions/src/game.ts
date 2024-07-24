@@ -20,6 +20,10 @@ export type Game = {
   lobbyId: string;
   round: number;
   players: Player[];
+  users: {
+    userId: string;
+    displayName: string;
+  }[];
   currentRoundId: string;
   gameOver?: boolean;
 };

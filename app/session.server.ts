@@ -4,7 +4,7 @@ import {
   redirect,
 } from "@remix-run/node";
 
-import { auth as serverAuth, SESSION_EXPIRY } from "~/firebase.server";
+import { db, auth as serverAuth, SESSION_EXPIRY } from "~/firebase.server";
 
 const cookieSecret = process.env.cookieSecret || "";
 
@@ -47,6 +47,29 @@ export async function requireUserSession(request: Request) {
   } catch (error) {
     return redirect("/login");
   }
+}
+
+export async function requireUserProfile(request: Request) {
+  const cookieSession = await storage.getSession(request.headers.get("Cookie"));
+  const token = cookieSession.get("token");
+
+  if (!token) {
+    throw redirect("/login");
+  }
+
+  const tokenUser = await serverAuth.verifySessionCookie(token, true);
+
+  if (!tokenUser) {
+    throw redirect("/login");
+  }
+
+  const userSnapshot = await db.collection("user").doc(tokenUser.uid).get();
+
+  if (!userSnapshot.exists) {
+    throw redirect("/profile");
+  }
+
+  return tokenUser;
 }
 
 export async function getUserSession(request: Request) {
