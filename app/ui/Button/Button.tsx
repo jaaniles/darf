@@ -43,7 +43,7 @@ export function Button({
       onClick={onClick}
     >
       {icon && <span {...stylex.props(styles.icon)}>{icon}</span>}
-      <Text size="lg" color="inherit">
+      <Text size="lg" color="inherit" weight="regular">
         {text}
       </Text>
     </button>

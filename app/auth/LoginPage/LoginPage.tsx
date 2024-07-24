@@ -10,6 +10,8 @@ import { Button } from "~/ui/Button/Button";
 import { LoginLayout } from "~/ui/Layout/LoginLayout";
 import { Stack } from "~/ui/Stack/Stack";
 import { Headline } from "~/ui/typography/Headline";
+import { LoreText } from "~/ui/typography/LoreText";
+import { Text } from "~/ui/typography/Text";
 
 export default function LoginPage() {
   const fetcher = useFetcher();
@@ -33,7 +35,8 @@ export default function LoginPage() {
           weight="bold"
           align="center"
         >
-          The Expedition needs you!
+          The <LoreText content={<ExpeditionLore />}>Expedition</LoreText> needs
+          you!
         </Headline>
         <Button
           onClick={handleGoogleLogin}
@@ -45,3 +48,11 @@ export default function LoginPage() {
     </LoginLayout>
   );
 }
+
+const ExpeditionLore = () => (
+  <div>
+    <Text>
+      {`A Dwarven digging company called 'Expedition' is the most influential company in the kingdom.\n\nThey have been digging for centuries and have found many treasures.\n\nThey are now looking for new recruits to join their ranks and help them find even more treasures. Will you join them on their quest?`}
+    </Text>
+  </div>
+);

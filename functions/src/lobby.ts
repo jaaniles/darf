@@ -10,6 +10,7 @@ type Lobby = {
   currentRoundId: string;
   admin: string;
   players: string[];
+  users: { userId: string; displayName: string }[];
   joinCode: string;
   ready?: string[];
   gameId?: string;
@@ -152,6 +153,9 @@ export const kickFromLobby = onRequest(async (req, res) => {
   try {
     await lobbyRef.update({
       players: FieldValue.arrayRemove(userToKick),
+      users: FieldValue.arrayRemove(
+        lobby.users.find((u) => u.userId === userToKick)
+      ),
     });
 
     res.status(200).send({

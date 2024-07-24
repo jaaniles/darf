@@ -23,7 +23,7 @@ export async function joinLobbyRequest(
   return await withTry(async () => {
     const response = await jsonPostRequest(`/joinLobby`, {
       joinCode: input.joinCode,
-      displayname: input.displayName,
+      displayName: input.displayName,
       userId: input.userId,
     });
 

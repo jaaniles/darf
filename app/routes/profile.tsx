@@ -30,7 +30,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect("/profile");
   }
 
-  return redirect("/profile");
+  return redirect("/");
 };
 
 export const loader: LoaderFunction = async ({ request }) => {

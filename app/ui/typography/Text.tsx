@@ -6,6 +6,7 @@ import { fontSize, theme } from "~/tokens.stylex";
 export type Props = {
   children: ReactNode;
   size?: Size | undefined;
+  weight?: "light" | "regular" | "bold";
   color?: "white" | "primary" | "secondary" | "error" | "inherit";
   align?: "left" | "center" | "right";
   uppercase?: boolean;
@@ -22,6 +23,7 @@ export type FontFamily = "inter" | "barlow";
 export function Text({
   children,
   size = "md",
+  weight = "light",
   color = "white",
   align = "left",
   uppercase = false,
@@ -37,6 +39,7 @@ export function Text({
         textAlignStyles[align],
         uppercase && styles.uppercase,
         lineClamp && lineClampStyles[lineClamp],
+        weight && weightStyles[weight],
         style
       )}
     >
@@ -65,6 +68,18 @@ const fontSizeStyles = stylex.create({
   },
   lg: {
     fontSize: fontSize.bodyLarge,
+  },
+});
+
+const weightStyles = stylex.create({
+  light: {
+    fontWeight: 300,
+  },
+  regular: {
+    fontWeight: 400,
+  },
+  bold: {
+    fontWeight: 700,
   },
 });
 

@@ -1,10 +1,11 @@
 import { Form } from "@remix-run/react";
+import stylex from "@stylexjs/stylex";
 import { UserProfile } from "~/auth/getUserProfile.server";
+import { borderRadius, spacing, theme } from "~/tokens.stylex";
 
 import { Button } from "~/ui/Button/Button";
 import { TextField } from "~/ui/fields/TextField";
 import { Fieldset } from "~/ui/form/Fieldset";
-import { Link } from "~/ui/Link/Link";
 import { Stack } from "~/ui/Stack/Stack";
 import { Headline } from "~/ui/typography/Headline";
 
@@ -17,29 +18,69 @@ type Props = {
 export function MainMenu({ user }: Props) {
   return (
     <Stack spacing={32}>
-      <Text>Well met, {user.displayName}</Text>
+      <Headline size="sm" as="h2" weight="bold" color="primary">
+        Well met, {user.displayName}
+      </Headline>
 
-      <Form method="post" action="/lobby/create">
-        <Fieldset>
-          <input type="hidden" value={user.uid} name="userId" />
-          <input type="hidden" value={user.displayName} name="displayName" />
-          <Button type="submit" text="Start an expedition" />
-        </Fieldset>
-      </Form>
+      <section {...stylex.props(styles.section)}>
+        <Stack spacing={16}>
+          <Headline as="h3" size="sm" weight="regular" color="primary">
+            Lead
+          </Headline>
+          <Text size="lg" weight="regular">
+            {"The Company offers you an opportunity to lead an expedition."}
+          </Text>
 
-      <Headline as="h2">Join an expedition</Headline>
-      <Form method="post" action="/lobby/join">
-        <Fieldset>
-          <Stack spacing={16}>
-            <input type="hidden" value={user.uid} name="userId" />
-            <input type="hidden" value={user.displayName} name="displayName" />
-            <TextField label="Code" name="joinCode" id="joinCode" />
-            <Button type="submit" text="Request to join" />
-          </Stack>
-        </Fieldset>
-      </Form>
+          <Form method="post" action="/lobby/create">
+            <Fieldset>
+              <input type="hidden" value={user.uid} name="userId" />
+              <input
+                type="hidden"
+                value={user.displayName}
+                name="displayName"
+              />
+              <Button type="submit" text="Lead an expedition" />
+            </Fieldset>
+          </Form>
+        </Stack>
+      </section>
 
-      <Link to="/logout">{">"} Logout</Link>
+      <section {...stylex.props(styles.section)}>
+        <Stack spacing={16}>
+          <Headline as="h3" size="sm" weight="regular" color="primary">
+            Join
+          </Headline>
+          <Text size="lg" weight="regular">
+            {"Or do you perhaps want to join an existing expedition?"}
+          </Text>
+          <Form method="post" action="/lobby/join">
+            <Fieldset>
+              <Stack spacing={16}>
+                <input type="hidden" value={user.uid} name="userId" />
+                <input
+                  type="hidden"
+                  value={user.displayName}
+                  name="displayName"
+                />
+                <TextField
+                  label="Secret phrase"
+                  name="joinCode"
+                  id="joinCode"
+                />
+                <Button type="submit" text="Join an expedition" />
+              </Stack>
+            </Fieldset>
+          </Form>
+        </Stack>
+      </section>
     </Stack>
   );
 }
+
+const styles = stylex.create({
+  section: {
+    borderRadius: borderRadius.big,
+    background: theme.appBackground2,
+    padding: spacing._16,
+  },
+});

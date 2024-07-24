@@ -298,9 +298,9 @@ export const theme = stylex.defineVars({
   /* 
   / Link
   */
-  link: colors.indigo11,
-  linkHover: colors.indigo12,
-  linkVisited: colors.indigo10,
+  link: colors.amber11,
+  linkHover: colors.amber12,
+  linkVisited: colors.amber12,
 
   /*
   / Statuses

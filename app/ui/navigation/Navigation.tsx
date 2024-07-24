@@ -1,4 +1,8 @@
-import { GearIcon, HomeIcon } from "@radix-ui/react-icons";
+import {
+  ArrowRightStartOnRectangleIcon,
+  HomeIcon,
+  UserIcon,
+} from "@heroicons/react/24/solid";
 import stylex from "@stylexjs/stylex";
 import { borderRadius, colors, spacing, theme } from "~/tokens.stylex";
 import { Link } from "~/ui/Link/Link";
@@ -14,7 +18,12 @@ export function Navigation() {
         </li>
         <li>
           <Link to="/profile">
-            <GearIcon width={25} height={25} />
+            <UserIcon width={25} height={25} />
+          </Link>
+        </li>
+        <li>
+          <Link to="/logout">
+            <ArrowRightStartOnRectangleIcon width={25} height={25} />
           </Link>
         </li>
       </ul>

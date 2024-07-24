@@ -13,19 +13,17 @@ type Props = {
 };
 
 export function EditProfile({ user }: Props) {
-  console.log("what is user?", user);
-
   return (
     <Form method="post">
       <Fieldset>
         <Stack spacing={16}>
           <Headline as="h1">Expedition profile</Headline>
           <Text>
-            The Company requires you to register your official Dwarven name.
+            The Company requires you to state your official Dwarven name.
           </Text>
           <input type="hidden" value={user?.uid} name="userId" />
           <TextField
-            label="Drawf name"
+            label="Dwarf name"
             id="displayName"
             name="displayName"
             defaultValue={user?.displayName}
