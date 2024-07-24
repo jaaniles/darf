@@ -24,16 +24,18 @@ export function Navigation() {
 
 const styles = stylex.create({
   root: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
 
     background: theme.appBackground1,
-    borderBottom: `1px solid ${colors.slate2}`,
+    borderTop: `1px solid ${colors.slate2}`,
     borderRadius: borderRadius.small,
     width: "100%",
-
-    paddingTop: 8,
 
     height: 50,
   },

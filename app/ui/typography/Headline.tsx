@@ -7,6 +7,7 @@ export type Props = {
   children: ReactNode;
   as: "h1" | "h2" | "h3" | "h4" | "span";
   size?: "sm" | "md" | "lg" | "hg";
+  weight?: "light" | "regular" | "bold";
   color?: "white" | "primary" | "disabled" | "error";
   align?: "left" | "center" | "right";
 };
@@ -15,6 +16,7 @@ export function Headline({
   children,
   as,
   size = "lg",
+  weight = "light",
   color = "white",
   align = "left",
 }: Props) {
@@ -26,7 +28,8 @@ export function Headline({
         styles.root,
         fontSizeStyles[size],
         colorStyles[color],
-        textAlignStyles[align]
+        textAlignStyles[align],
+        weightStyles[weight]
       )}
     >
       {children}
@@ -82,5 +85,17 @@ const textAlignStyles = stylex.create({
   },
   right: {
     textAlign: "right",
+  },
+});
+
+const weightStyles = stylex.create({
+  light: {
+    fontWeight: 300,
+  },
+  regular: {
+    fontWeight: 400,
+  },
+  bold: {
+    fontWeight: 700,
   },
 });

@@ -1,7 +1,10 @@
 import stylex from "@stylexjs/stylex";
 
-import { border, borderRadius, spacing, theme } from "~/tokens.stylex";
+import { spacing, theme } from "~/tokens.stylex";
 import { Headline } from "~/ui/typography/Headline";
+
+import splash from "~/assets/img/splash.png";
+import { motion } from "framer-motion";
 
 type Props = {
   children: React.ReactNode;
@@ -9,13 +12,34 @@ type Props = {
 
 export function LoginLayout({ children }: Props) {
   return (
-    <main {...stylex.props(styles.root)}>
+    <motion.main
+      {...stylex.props(styles.root)}
+      initial={{
+        background:
+          "radial-gradient(at 10%, rgba(17,19,31,1) 0%, rgba(17,19,31,1) 10%, rgba(17,17,19,1) 100%)",
+      }}
+      animate={{
+        background:
+          "radial-gradient(at 10%, rgba(48,32,8,1) 15%, rgba(17,19,31,1) 50%, rgba(17,17,19,1) 100%)",
+        transition: {
+          duration: 5,
+          repeat: Infinity,
+          repeatType: "mirror",
+        },
+      }}
+    >
       <Headline as="h1" size="hg" color="primary">
         DARF
       </Headline>
 
+      <img
+        {...stylex.props(styles.splash)}
+        src={splash}
+        alt="Splash of a dwarf examining a diamond"
+      />
+
       <div {...stylex.props(styles.content)}>{children}</div>
-    </main>
+    </motion.main>
   );
 }
 
@@ -28,13 +52,11 @@ const styles = stylex.create({
     alignItems: "center",
     justifyContent: {
       default: "center",
-      [MOBILE]: "center",
+      [MOBILE]: "space-between",
     },
 
     gap: spacing._32,
     padding: `${spacing._98} ${spacing._16} ${spacing._16} ${spacing._16}`,
-    background:
-      "radial-gradient(circle, rgba(17,19,31,1) 0%, rgba(17,19,31,1) 10%, rgba(17,17,19,1) 100%)",
 
     color: theme.text,
     minHeight: "100vh",
@@ -43,13 +65,13 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
 
-    background: theme.appBackground1,
-    border: border.container,
-    borderRadius: borderRadius.big,
-
     padding: `${spacing._32} ${spacing._32}`,
 
     width: "100%",
     maxWidth: 350,
+  },
+  splash: {
+    width: "80%",
+    height: "auto",
   },
 });
