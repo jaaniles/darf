@@ -69,7 +69,7 @@ const styles = stylex.create({
     },
 
     gap: spacing._32,
-    padding: `${spacing._98} ${spacing._16} ${spacing._16} ${spacing._16}`,
+    padding: `${spacing._98} ${spacing._16} ${spacing._72} ${spacing._16}`,
 
     color: theme.text,
     minHeight: "100vh",

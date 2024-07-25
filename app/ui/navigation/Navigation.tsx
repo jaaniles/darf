@@ -76,6 +76,7 @@ const styles = stylex.create({
     width: "100%",
 
     padding: `${spacing._8} 0px`,
+    zIndex: 10,
   },
   activeIndicator: {
     position: "absolute",
