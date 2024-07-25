@@ -280,7 +280,9 @@ export const theme = stylex.defineVars({
   textNeutralHover: colors.slate11,
 
   textPrimary: colors.amber12,
+  textPrimaryHover: colors.amber11,
   textSecondary: colors.amber11,
+  textSecondaryHover: colors.amber12,
   /*
   textPrimary: colors.indigo12,
   textSecondary: colors.indigo11,
@@ -308,18 +310,22 @@ export const theme = stylex.defineVars({
   successBackground: colors.teal3,
   successHover: colors.teal4,
   successActive: colors.teal5,
+  successBorder: colors.teal6,
 
   errorBackground: colors.red3,
   errorHover: colors.red4,
   errorActive: colors.red5,
+  errorBorder: colors.red6,
 
   warningBackground: colors.amber3,
   warningHover: colors.amber4,
   warningActive: colors.amber5,
+  warningBorder: colors.amber6,
 
   infoBackground: colors.cyan3,
   infoHover: colors.cyan4,
   infoActive: colors.cyan5,
+  infoBorder: colors.cyan6,
 });
 
 export const spacing = stylex.defineVars({
@@ -346,10 +352,11 @@ export const borderRadius = stylex.defineVars({
 export const border = stylex.defineVars({
   default: `2px solid ${theme.accentBorder}`,
   interactive: `2px solid ${theme.accentBorderInteractive}`,
-  hover: `2px solid ${theme.primaryBorderHover}`,
+  hover: `2px solid ${theme.accentBorderHover}`,
   hoverAccent: `2px solid ${theme.accentBorderHover}`,
 
-  neutral: `2px solid ${theme.solidBackground}`,
+  neutral: `2px solid ${theme.appBackground2}`,
+  neutral2: `2px solid ${colors.slate3}`,
 
   input: `2px solid ${theme.accentBorder}`,
   inputHover: `2px solid ${theme.accentBorderHover}`,

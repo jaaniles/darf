@@ -1,10 +1,18 @@
 //import { useBeforeUnload, useSubmit } from "@remix-run/react";
 import { useNavigate } from "@remix-run/react";
+import stylex from "@stylexjs/stylex";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import { UserProfile } from "~/auth/getUserProfile";
 import { db } from "~/firebase.client";
+import { LobbyPlayer } from "~/lobby/LobbyPlayer/LobbyPlayer";
 import { jsonPostRequest } from "~/request.client";
+import { spacing } from "~/tokens.stylex";
 import { Button } from "~/ui/Button/Button";
+import { Callout } from "~/ui/Callout/Callout";
+import { Stack } from "~/ui/Stack/Stack";
+import { Headline } from "~/ui/typography/Headline";
+import { Text } from "~/ui/typography/Text";
 
 type Props = {
   lobbyId: string;
@@ -15,10 +23,7 @@ type Lobby = {
   currentRoundId: string;
   admin: string;
   players: string[];
-  users: {
-    userId: string;
-    displayName: string;
-  }[];
+  users: UserProfile[];
   joinCode: string;
   ready?: string[];
   gameId?: string;
@@ -74,55 +79,67 @@ export default function LobbyPage({ lobbyId, userId }: Props) {
   const allReady = lobbyState?.players.length === lobbyState?.ready?.length;
 
   return (
-    <div>
-      <h1>Welcome to lobby</h1>
-      <p>{lobbyId}</p>
+    <Stack spacing={48}>
+      <Stack spacing={32}>
+        <Headline as="h1">Gather your party</Headline>
+        <Stack spacing={16}>
+          <Text>
+            Give this secret phrase to your friend so they can join this
+            expedition.
+          </Text>
+          <Callout variant="info" text={`${lobbyState?.joinCode}`} />
+        </Stack>
+      </Stack>
 
-      <p>Join with code: {lobbyState?.joinCode}</p>
+      <Stack spacing={8}>
+        <Headline as="h2" size="sm" weight="bold">
+          Party
+        </Headline>
+        <ul {...stylex.props(styles.ul)}>
+          {lobbyState?.users.map((user) => (
+            <LobbyPlayer
+              key={user.userId}
+              lobbyId={lobbyId}
+              userId={userId}
+              player={user}
+              isReady={!!lobbyState?.ready?.includes(user.userId)}
+              playerIsAdmin={user.userId === lobbyState?.admin}
+              canKick={userIsAdmin}
+            />
+          ))}
+        </ul>
+      </Stack>
 
-      <hr />
-
-      <h2>Ready?</h2>
-      <Button
-        type="button"
-        text={isReady ? "Cancel" : "Ready"}
-        onClick={handlePlayerReady}
-      />
-
-      <h2>Users in lobby:</h2>
-      <ul>
-        {lobbyState?.users.map((user) => (
-          <li key={user.userId}>
-            <p>
-              {user.userId === lobbyState?.admin && "👑"}
-              {user.displayName}
-              {lobbyState?.ready?.includes(user.userId) && "✅"}
-            </p>
-            {userIsAdmin && user.userId !== userId && (
-              <form method="POST" action={`/lobby/${lobbyId}/kick`}>
-                <input type="hidden" name="userToKick" value={user.userId} />
-                <input type="hidden" name="userId" value={userId} />
-                <Button type="submit" text="Kick" variant="secondary" />
-              </form>
-            )}
-          </li>
-        ))}
-
-        {allReady && (
-          <form method="POST" action={`/lobby/${lobbyId}/start`}>
-            <input type="hidden" name="userId" value={userId} />
-            <Button type="submit" text="Start expedition" variant="secondary" />
-          </form>
-        )}
-      </ul>
-    </div>
+      <Stack spacing={16}>
+        {allReady && <Text>All players are ready to start.</Text>}
+        <Stack spacing={48} direction="horizontal">
+          <Button
+            type="button"
+            text={isReady ? "Cancel" : "I'm ready"}
+            onClick={handlePlayerReady}
+            variant="secondary"
+          />
+          {allReady && (
+            <form method="POST" action={`/lobby/${lobbyId}/start`}>
+              <input type="hidden" name="userId" value={userId} />
+              <Button type="submit" text="Start expedition" />
+            </form>
+          )}
+        </Stack>
+      </Stack>
+    </Stack>
   );
 }
 
-/*
-      <form method="POST" action={`/lobby/${lobbyId}/ready`}>
-        <input type="hidden" name="userId" value={userId} />
-        <input type="hidden" name="ready" value={isReady ? "true" : "false"} />
-        <Button type="submit" text={isReady ? "Cancel" : "Ready"} />
-      </form>
-      */
+const styles = stylex.create({
+  ul: {
+    display: "flex",
+    flexDirection: "column",
+
+    gap: spacing._8,
+
+    width: "100%",
+    margin: 0,
+    padding: 0,
+  },
+});

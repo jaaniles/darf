@@ -19,6 +19,10 @@ export type Round = {
   nudge: string[]; // List of idle players who should be nudged
   counter: number;
   turnTimestamp: Timestamp; // Timestamp of the last turn, used for forcing turns if there's idle players
+
+  //TRAPS
+  SNAKE?: number;
+  LAVA?: number;
 };
 
 // Triggers when new round is created
@@ -74,12 +78,23 @@ export const endRound = async ({
   });
 
   console.log("End round. Updating round result..");
-  await roundRef.update({
-    players: continuingPlayers,
-    campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
-    rewardStack: [],
-    nudge: [],
-  });
+
+  /* HUGE PURKKA REFACTOR */
+  if (exitingPlayersWithReward.length > 0) {
+    await roundRef.update({
+      players: continuingPlayers,
+      campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
+      rewardStack: [],
+      nudge: [],
+    });
+  } else {
+    await roundRef.update({
+      players: continuingPlayers,
+      rewardStack: [],
+      nudge: [],
+    });
+  }
+  /* HUGE PURKKA REFACTOR */
 
   console.log("... updating game score");
   await handleUpdateGameScore({

@@ -12,7 +12,7 @@ import {
 import { shuffleTiles, tiles } from "../tiles";
 import { createNewRound, endRound, Round } from "./round";
 
-export const GAME_MAX_ROUNDS = 2;
+export const GAME_MAX_ROUNDS = 5;
 const TURN_WAIT_TIME = 30 * 1000; // 30 seconds
 
 export type Game = {
@@ -171,6 +171,92 @@ export const nextTurn = onRequest({ cors: true }, async (req, res) => {
   const board = round?.board || [];
   const remainingTiles = tiles.filter((tile) => !board.includes(tile));
   const nextTile = shuffleTiles(remainingTiles)[0];
+
+  /* THIS LOGIC IS HUGE PURKKA!!! REFACTOR!!! */
+  // Tile is a trap
+  if (nextTile.trap) {
+    // There is already a trap, end round
+    if (round[nextTile.trap]) {
+      // Award exiting players, end round
+      const exitingPlayersWithReward = getExitingPlayersWithDistributedReward({
+        rewardStack: round.rewardStack,
+        exitingPlayers,
+      });
+
+      if (exitingPlayersWithReward.length > 0) {
+        await roundRef.update({
+          board: FieldValue.arrayUnion(nextTile),
+          rewardStack: [nextTile],
+          players: continuingPlayers,
+          continuePlayers: [],
+          exitPlayers: [],
+          campPlayers: FieldValue.arrayUnion(...exitingPlayersWithReward),
+          nudge: [],
+          turnTimestamp: Timestamp.now(),
+        });
+      } else {
+        await roundRef.update({
+          board: FieldValue.arrayUnion(nextTile),
+          rewardStack: [nextTile],
+          players: continuingPlayers,
+          continuePlayers: [],
+          exitPlayers: [],
+          nudge: [],
+          turnTimestamp: Timestamp.now(),
+        });
+      }
+
+      /* TODO _---__ this is huge purkka */
+      await endRound({
+        roundRef,
+        round,
+        gameId: round.gameId,
+        roundCounter: round.counter,
+        continuingPlayers,
+        exitingPlayers,
+      });
+
+      const gameRef = db.collection("game").doc(round.gameId);
+      // If this is last round, end game
+      if (round.counter >= GAME_MAX_ROUNDS) {
+        console.log("GAME OVER, all rounds have been played");
+
+        await gameRef.update({
+          gameOver: true,
+        });
+
+        res.status(200).send({ data: { ...data, message: "Game ended" } });
+        return;
+      }
+
+      const game = (await gameRef.get()).data() as Game;
+
+      // More rounds to play, create new round
+      const newRoundId = await createNewRound({ round, lobbyId: game.lobbyId });
+
+      // Update lobby with new round id
+      const lobbyRef = db.collection("lobby").doc(game.lobbyId);
+      lobbyRef.update({
+        currentRoundId: newRoundId,
+      });
+
+      // Update game with new round id and increment round counter
+      gameRef.update({
+        currentRoundId: newRoundId,
+        round: FieldValue.increment(1),
+      });
+
+      res.status(200).send({
+        data: { ...data, roundId: newRoundId, message: "Round ended" },
+      });
+      return;
+    }
+
+    await roundRef.update({
+      [nextTile.trap]: FieldValue.increment(1),
+    });
+  }
+  /* THIS LOGIC IS HUGE PURKKA!!! REFACTOR!!! */
 
   const playersExitedThisRound = exitingPlayers.length > 0;
   switch (playersExitedThisRound) {

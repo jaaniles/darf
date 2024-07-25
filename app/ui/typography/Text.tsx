@@ -7,7 +7,7 @@ export type Props = {
   children: ReactNode;
   size?: Size | undefined;
   weight?: "light" | "regular" | "bold";
-  color?: "white" | "primary" | "secondary" | "error" | "inherit";
+  color?: "white" | "primary" | "secondary" | "error" | "success" | "inherit";
   align?: "left" | "center" | "right";
   uppercase?: boolean;
   lineClamp?: 3;
@@ -51,7 +51,7 @@ export function Text({
 const styles = stylex.create({
   root: {
     whiteSpace: "pre-wrap",
-    lineHeight: 1.5,
+    lineHeight: 1.7,
     maxWidth: "70ch",
   },
   uppercase: {
@@ -92,6 +92,9 @@ const colorStyles = stylex.create({
   },
   secondary: {
     color: theme.textSecondary,
+  },
+  success: {
+    color: theme.textSuccess,
   },
   error: {
     color: theme.textError,

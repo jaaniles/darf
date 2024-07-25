@@ -1,16 +1,18 @@
+import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Game } from "functions/src/game";
-import { useEffect, useState } from "react";
+
 import { db } from "~/firebase.client";
 import { BaseLayout } from "~/ui/Layout/BaseLayout";
 import { Link } from "~/ui/Link/Link";
+import { UserProfile } from "~/auth/getUserProfile";
 
 type Props = {
   gameId: string;
-  userId: string;
+  user: UserProfile;
 };
 
-export default function GameOverPage({ gameId, userId }: Props) {
+export default function GameOverPage({ gameId, user }: Props) {
   const [state, setState] = useState<Game | null>(null);
 
   // Subscribe to realtime game state
@@ -29,9 +31,9 @@ export default function GameOverPage({ gameId, userId }: Props) {
   }, [gameId]);
 
   return (
-    <BaseLayout>
+    <BaseLayout user={user}>
       <h1>Game over:</h1>
-      <p>You are: {userId}</p>
+      <p>You are: {user.userId}</p>
       <p>Game id: {gameId}</p>
 
       <Link to="/">Index</Link>

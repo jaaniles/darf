@@ -1,8 +1,9 @@
 import { json, LoaderFunction, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { getUserProfile } from "~/auth/getUserProfile";
-import GameOverPage from "~/game/GameOverPage/GameOverPage";
+import { lore } from "~/routes/library";
 import { getSession, getTokenUser } from "~/session.server";
+
 import { BaseLayout } from "~/ui/Layout/BaseLayout";
 
 export const loader: LoaderFunction = async ({ request, params }) => {
@@ -10,19 +11,19 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const tokenUser = await getTokenUser(session);
   const user = await getUserProfile(tokenUser);
 
-  if (!user?.displayName) {
-    return redirect("/profile");
+  const { topic } = params;
+
+  if (!topic) {
+    return redirect("/");
   }
 
-  return json({ user, gameId: params.gameId });
+  return json({ topic, user });
 };
 
-export default function GameOverRoute() {
-  const { gameId, user } = useLoaderData<typeof loader>();
+export default function LoreRoute() {
+  const { topic, user } = useLoaderData<typeof loader>();
 
-  return (
-    <BaseLayout>
-      <GameOverPage gameId={gameId} user={user} />
-    </BaseLayout>
-  );
+  const Component = lore[topic];
+
+  return <BaseLayout user={user}>{Component}</BaseLayout>;
 }

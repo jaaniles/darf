@@ -1,31 +1,39 @@
 import { LoaderFunction, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { DecodedIdToken } from "firebase-admin/auth";
+
 import GamePage from "~/game/GamePage/GamePage";
-import { requireUserSession } from "~/session.server";
+import { getSession, getTokenUser } from "~/session.server";
 import { BaseLayout } from "~/ui/Layout/BaseLayout";
 
 export const loader: LoaderFunction = async ({ params, request }) => {
   const { gameId } = params;
 
   if (!gameId) {
-    redirect("/");
-    return;
+    return redirect("/");
   }
 
-  const session = (await requireUserSession(request)) as DecodedIdToken;
+  const session = await getSession(request.headers.get("Cookie"));
+  const tokenUser = await getTokenUser(session);
+
+  if (!session || !tokenUser) {
+    return redirect("/login");
+  }
 
   return {
     gameId,
-    userId: session.uid,
+    userId: tokenUser.uid,
   };
 };
 
 export default function GameRoute() {
   const { gameId, userId } = useLoaderData<typeof loader>();
 
+  const user = {
+    userId,
+  };
+
   return (
-    <BaseLayout>
+    <BaseLayout user={user}>
       <GamePage gameId={gameId} userId={userId} />
     </BaseLayout>
   );

@@ -1,8 +1,7 @@
 import { LoaderFunction, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { DecodedIdToken } from "firebase-admin/auth";
 import LobbyPage from "~/lobby/LobbyPage/LobbyPage";
-import { requireUserSession } from "~/session.server";
+import { getSession, getTokenUser } from "~/session.server";
 import { BaseLayout } from "~/ui/Layout/BaseLayout";
 
 export const loader: LoaderFunction = async ({ params, request }) => {
@@ -13,19 +12,28 @@ export const loader: LoaderFunction = async ({ params, request }) => {
     return;
   }
 
-  const session = (await requireUserSession(request)) as DecodedIdToken;
+  const session = await getSession(request.headers.get("Cookie"));
+  const tokenUser = await getTokenUser(session);
+
+  if (!session || !tokenUser) {
+    return redirect("/login");
+  }
 
   return {
     lobbyId,
-    userId: session.uid,
+    userId: tokenUser.uid,
   };
 };
 
 export default function LobbyPageRoute() {
   const { lobbyId, userId } = useLoaderData<typeof loader>();
 
+  const user = {
+    userId,
+  };
+
   return (
-    <BaseLayout>
+    <BaseLayout user={user}>
       <LobbyPage lobbyId={lobbyId} userId={userId} />
     </BaseLayout>
   );

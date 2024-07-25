@@ -5,10 +5,13 @@ import {
   redirect,
 } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { getUserProfile } from "~/auth/getUserProfile.server";
+import { getUserProfile } from "~/auth/getUserProfile";
 import { db } from "~/firebase.server";
 import { EditProfile } from "~/profile/EditProfile/EditProfile";
+import { commitSession, getSession, getTokenUser } from "~/session.server";
+import { Callout } from "~/ui/Callout/Callout";
 import { BaseLayout } from "~/ui/Layout/BaseLayout";
+import { Stack } from "~/ui/Stack/Stack";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
@@ -34,17 +37,31 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
-  const user = await getUserProfile(request);
+  const session = await getSession(request.headers.get("Cookie"));
+  const tokenUser = await getTokenUser(session);
+  const user = await getUserProfile(tokenUser);
 
-  return json({ user });
+  if (!session || !tokenUser) {
+    return redirect("/login");
+  }
+
+  const message = session.get("error") || null;
+
+  return json(
+    { user, message },
+    { headers: { "Set-Cookie": await commitSession(session) } }
+  );
 };
 
 export default function ProfileRoute() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, message } = useLoaderData<typeof loader>();
 
   return (
-    <BaseLayout>
-      <EditProfile user={user} />
+    <BaseLayout user={user}>
+      <Stack spacing={32}>
+        {message && <Callout text={message} variant="error" />}
+        <EditProfile user={user} />
+      </Stack>
     </BaseLayout>
   );
 }

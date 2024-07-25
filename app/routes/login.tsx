@@ -1,7 +1,7 @@
 import { ActionFunction, json, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import LoginPage from "~/auth/LoginPage/LoginPage";
-import { createUserSession, getUserSession } from "~/session.server";
+import { createUserSession, getSession, getTokenUser } from "~/session.server";
 
 export const action: ActionFunction = async ({ request }) => {
   const form = await request.formData();
@@ -15,10 +15,11 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
-  const userSession = await getUserSession(request);
+  const session = await getSession(request.headers.get("Cookie"));
+  const tokenUser = await getTokenUser(session);
 
   return json({
-    loggedIn: !!userSession,
+    loggedIn: !!tokenUser,
   });
 };
 

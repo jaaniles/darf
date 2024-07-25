@@ -18,7 +18,5 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
     return null;
   }
 
-  console.info("Next turn success with message:", response.message);
-
   return redirect(`/game/${gameId}`);
 };

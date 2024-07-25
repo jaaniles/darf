@@ -1,19 +1,21 @@
 import stylex from "@stylexjs/stylex";
 import { motion } from "framer-motion";
+import { UserProfile } from "~/auth/getUserProfile";
 
 import { spacing, theme } from "~/tokens.stylex";
 import { Navigation } from "~/ui/navigation/Navigation";
 import { PageLoadIndicator } from "~/ui/PageLoadIndicator/PageLoadIndicator";
 
 type Props = {
+  user?: UserProfile;
   children: React.ReactNode;
 };
 
-export function BaseLayout({ children }: Props) {
+export function BaseLayout({ user, children }: Props) {
   return (
     <motion.div {...stylex.props(styles.root)}>
       <PageLoadIndicator />
-      <Navigation />
+      <Navigation user={user} />
       <main {...stylex.props(styles.content)}>{children}</main>
     </motion.div>
   );

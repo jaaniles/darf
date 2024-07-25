@@ -1,5 +1,5 @@
 import { Form } from "@remix-run/react";
-import { UserProfile } from "~/auth/getUserProfile.server";
+import { UserProfile } from "~/auth/getUserProfile";
 
 import { Button } from "~/ui/Button/Button";
 import { TextField } from "~/ui/fields/TextField";
@@ -21,7 +21,7 @@ export function EditProfile({ user }: Props) {
           <Text>
             The Company requires you to state your official Dwarven name.
           </Text>
-          <input type="hidden" value={user?.uid} name="userId" />
+          <input type="hidden" value={user?.userId} name="userId" />
           <TextField
             label="Dwarf name"
             id="displayName"

@@ -100,9 +100,9 @@ const variantStyles = stylex.create({
     background: "none",
     border: border.interactive,
     color: {
-      default: theme.textAccent,
-      ":hover": theme.textAccentHover,
-      ":active": theme.textAccent,
+      default: theme.textPrimary,
+      ":hover": theme.textPrimaryHover,
+      ":active": theme.textPrimary,
     },
     borderColor: {
       default: theme.accentBorder,

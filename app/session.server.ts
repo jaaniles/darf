@@ -2,6 +2,8 @@ import {
   createCookieSessionStorage,
   createCookie,
   redirect,
+  Session,
+  SessionData,
 } from "@remix-run/node";
 
 import { db, auth as serverAuth, SESSION_EXPIRY } from "~/firebase.server";
@@ -72,9 +74,8 @@ export async function requireUserProfile(request: Request) {
   return tokenUser;
 }
 
-export async function getUserSession(request: Request) {
-  const cookieSession = await storage.getSession(request.headers.get("Cookie"));
-  const token = cookieSession.get("token");
+export async function getTokenUser(session: Session<SessionData, SessionData>) {
+  const token = session.get("token");
 
   if (!token) {
     return null;

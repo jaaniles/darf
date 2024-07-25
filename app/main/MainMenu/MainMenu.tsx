@@ -1,13 +1,15 @@
 import { Form } from "@remix-run/react";
 import stylex from "@stylexjs/stylex";
-import { UserProfile } from "~/auth/getUserProfile.server";
-import { borderRadius, spacing, theme } from "~/tokens.stylex";
+import { UserProfile } from "~/auth/getUserProfile";
+import { SecretPhraseLore } from "~/lore/SecretPhraseLore";
+import { border, borderRadius, spacing, theme } from "~/tokens.stylex";
 
 import { Button } from "~/ui/Button/Button";
 import { TextField } from "~/ui/fields/TextField";
 import { Fieldset } from "~/ui/form/Fieldset";
 import { Stack } from "~/ui/Stack/Stack";
 import { Headline } from "~/ui/typography/Headline";
+import { LoreText } from "~/ui/typography/LoreText";
 
 import { Text } from "~/ui/typography/Text";
 
@@ -33,7 +35,7 @@ export function MainMenu({ user }: Props) {
 
           <Form method="post" action="/lobby/create">
             <Fieldset>
-              <input type="hidden" value={user.uid} name="userId" />
+              <input type="hidden" value={user.userId} name="userId" />
               <input
                 type="hidden"
                 value={user.displayName}
@@ -51,12 +53,16 @@ export function MainMenu({ user }: Props) {
             Join
           </Headline>
           <Text size="lg" weight="regular">
-            {"Or do you perhaps want to join an existing expedition?"}
+            Or do you perhaps want to join an existing expedition? You need a{" "}
+            <LoreText to="/lore/secretPhrase" content={<SecretPhraseLore />}>
+              secret phrase
+            </LoreText>{" "}
+            to join.
           </Text>
           <Form method="post" action="/lobby/join">
             <Fieldset>
               <Stack spacing={16}>
-                <input type="hidden" value={user.uid} name="userId" />
+                <input type="hidden" value={user.userId} name="userId" />
                 <input
                   type="hidden"
                   value={user.displayName}
@@ -79,7 +85,8 @@ export function MainMenu({ user }: Props) {
 
 const styles = stylex.create({
   section: {
-    borderRadius: borderRadius.big,
+    borderRadius: borderRadius.small,
+    border: border.neutral2,
     background: theme.appBackground2,
     padding: spacing._16,
   },
